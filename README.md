@@ -37,8 +37,8 @@ SQL로 명단을 관리할 필요가 없어요.
 
 ### 4. 로그인 설정
 대시보드 → **Authentication → URL Configuration**
-- **Site URL**: 배포한 주소 (예: `https://codeview.vercel.app`)
-- **Redirect URLs**: `http://localhost:5173/**` 와 배포 주소 `https://codeview.vercel.app/**`
+- **Site URL**: 배포한 주소 (예: `https://wangjagom.github.io/codeView/`)
+- **Redirect URLs**: `http://localhost:5173/**` 와 배포 주소 `https://wangjagom.github.io/codeView/**`
 
 로그인은 두 가지예요.
 - **이메일 없이 시작하기**: 이름만 정하고 바로 들어와요. **Authentication → Sign In / Providers**에서 **Allow anonymous sign-ins**를 켜야 해요. 이 브라우저에서만 기억되니, 다른 기기에서도 쓰려면 앱의 **내 정보 → 이메일 연결**로 이메일을 붙여요.
@@ -46,7 +46,7 @@ SQL로 명단을 관리할 필요가 없어요.
 
 익명 로그인을 켜 두면 누구나 계정을 만들 수 있어서, 사람이 많아지면 **Authentication → Attack Protection**에서 CAPTCHA를 켜는 걸 추천해요. 계정을 만들어도 초대 코드를 모르면 다른 조의 내용은 볼 수 없어요.
 
-이메일 로그인은 Supabase 기본 메일 발송은 시간당 보낼 수 있는 수가 적어서, 조원이 많아지면 **Authentication → SMTP Settings**에서 메일 서비스를 연결하는 걸 추천해요.
+이메일 로그인에 쓰는 Supabase 기본 메일은 시간당 보낼 수 있는 수가 적어서, 조원이 많아지면 **Authentication → SMTP Settings**에서 메일 서비스를 연결하는 걸 추천해요.
 
 ### 5. 로컬에서 실행
 
