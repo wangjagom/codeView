@@ -8,6 +8,8 @@ interface Grammar {
   keywords?: Set<string>;
   /** 키워드를 대소문자 구분 없이 볼지 (ABAP, CDS, SQL) */
   ci?: boolean;
+  /** 키워드가 아닌 이름을 변수 색으로 칠할지 */
+  vars?: boolean;
   /** 줄 전체를 주석으로 보는 규칙 (ABAP의 첫 칸 *) */
   lineComment?: RegExp;
 }
@@ -33,6 +35,9 @@ const SQL_KW = words(`select from where and or not in as join inner left outer o
   update set delete values case when then else end is null like between begin end declare return returns language sqlscript
   options read-only using method by database procedure function table count sum min max avg`);
 const CSS_KW = words('important media keyframes from to');
+/** 흐름을 바꾸는 키워드는 VS Code처럼 다른 색(보라)으로 보여 줘요. */
+const CONTROL = words(`import from export default return if else for while do switch case break continue try catch finally throw await
+  endif loop endloop enddo endwhile elseif endcase when others exit check endtry raise perform call`);
 
 const STR_SQ = "'(?:[^'\\\\]|\\\\.)*'";
 const STR_DQ = '"(?:[^"\\\\]|\\\\.)*"';
@@ -43,13 +48,13 @@ const WORD = '[A-Za-z_$][\\w$]*';
 const GRAMMARS: Record<string, Grammar> = {
   JavaScript: {
     parts: [['c', '\\/\\/.*$|\\/\\*.*?\\*\\/'], ['s', `${STR_SQ}|${STR_DQ}|${STR_BT}`], ['tg', '<\\/?[A-Za-z][\\w.]*'], ['n', NUM], ['word', WORD]],
-    keywords: JS_KW,
+    keywords: JS_KW, vars: true,
   },
   ABAP: {
     lineComment: /^\*/,
     // "부터 줄 끝까지 주석, |문자열 템플릿|, 'text', `text`, <필드심볼>
     parts: [['c', '".*$'], ['s', "\\|(?:[^|\\\\]|\\\\.)*\\||'(?:[^']|'')*'|`(?:[^`]|``)*`"], ['ty', '<[\\w-]+>'], ['n', NUM], ['word', '[A-Za-z_][\\w-]*(?:\\s*\\(\\s*\\))?']],
-    keywords: ABAP_KW, ci: true,
+    keywords: ABAP_KW, ci: true, vars: true,
   },
   CDS: {
     parts: [['c', '\\/\\/.*$|\\/\\*.*?\\*\\/|--.*$'], ['ty', '@[\\w.]+'], ['s', "'(?:[^']|'')*'"], ['n', NUM], ['word', '[A-Za-z_][\\w]*']],
@@ -60,17 +65,17 @@ const GRAMMARS: Record<string, Grammar> = {
     keywords: SQL_KW, ci: true,
   },
   XML: {
-    parts: [['c', '<!--.*?-->'], ['tg', '<\\/?[\\w:.-]+|\\/?>'], ['s', `${STR_DQ}|${STR_SQ}`], ['f', '[\\w:.-]+(?==)']],
+    parts: [['c', '<!--.*?-->'], ['tg', '<\\/?[\\w:.-]+|\\/?>'], ['s', `${STR_DQ}|${STR_SQ}`], ['at', '[\\w:.-]+(?==)']],
   },
   HTML: {
-    parts: [['c', '<!--.*?-->'], ['tg', '<\\/?[\\w-]+|\\/?>'], ['s', `${STR_DQ}|${STR_SQ}`], ['f', '[\\w:-]+(?==)']],
+    parts: [['c', '<!--.*?-->'], ['tg', '<\\/?[\\w-]+|\\/?>'], ['s', `${STR_DQ}|${STR_SQ}`], ['at', '[\\w:-]+(?==)']],
   },
   CSS: {
-    parts: [['c', '\\/\\*.*?\\*\\/'], ['s', `${STR_DQ}|${STR_SQ}`], ['f', '[\\w-]+(?=\\s*:)'], ['n', '#[0-9a-fA-F]{3,8}\\b|\\b\\d+(?:\\.\\d+)?(?:px|rem|em|%|vh|vw|s|ms)?\\b'], ['ty', '[.#][\\w-]+'], ['word', '@?[\\w-]+']],
+    parts: [['c', '\\/\\*.*?\\*\\/'], ['s', `${STR_DQ}|${STR_SQ}`], ['at', '[\\w-]+(?=\\s*:)'], ['n', '#[0-9a-fA-F]{3,8}\\b|\\b\\d+(?:\\.\\d+)?(?:px|rem|em|%|vh|vw|s|ms)?\\b'], ['ty', '[.#][\\w-]+'], ['word', '@?[\\w-]+']],
     keywords: CSS_KW,
   },
   JSON: {
-    parts: [['f', `${STR_DQ}(?=\\s*:)`], ['s', STR_DQ], ['n', '-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b'], ['k', '\\b(?:true|false|null)\\b']],
+    parts: [['at', `${STR_DQ}(?=\\s*:)`], ['s', STR_DQ], ['n', '-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b'], ['k', '\\b(?:true|false|null)\\b']],
   },
 };
 // 예전에 올라온 글의 언어도 비슷한 문법으로 보여 줘요.
@@ -106,10 +111,10 @@ export function highlight(src: string, lang = 'JavaScript'): string {
     const t = esc(m[0]);
     if (cls === 'word') {
       const w = g.ci ? m[0].toLowerCase() : m[0];
-      if (g.keywords?.has(w)) cls = 'k';
+      if (g.keywords?.has(w)) cls = CONTROL.has(w.toLowerCase()) ? 'kc' : 'k';
       else if (!g.ci && /^[A-Z]/.test(m[0])) cls = 'ty';
       else if (/^\s*\(/.test(src.slice(m.index + m[0].length)) || /\(\s*\)$/.test(m[0])) cls = 'f';
-      else cls = '';
+      else cls = g.vars ? 'v' : '';
     }
     out += cls ? `<span class="${cls}">${t}</span>` : t;
     last = m.index + m[0].length;

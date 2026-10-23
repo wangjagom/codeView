@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
+import { CodeEditor } from '../components/CodeEditor';
 import { BackBar } from '../components/Layout';
 import { createPost, friendlyError } from '../lib/api';
 import { checkCode } from '../lib/checks';
@@ -73,9 +74,8 @@ export function NewPost() {
         <div className="field">
           <label htmlFor="nCode">코드</label>
           <div className="paste">
-            <textarea id="nCode" spellCheck={false} value={code} placeholder="여기에 코드를 붙여넣어요" maxLength={50000}
-              onChange={(ev) => { const v = ev.target.value; setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }}
-              onKeyDown={(ev) => { if (ev.key === 'Tab' && !ev.shiftKey) { ev.preventDefault(); const t = ev.currentTarget; t.setRangeText('  ', t.selectionStart, t.selectionEnd, 'end'); setCode(t.value); } }} />
+            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="여기에 코드를 붙여넣어요"
+              onChange={(v) => { setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }} />
             <div className="check" aria-live="polite">
               {!code.trim() ? <span className="muted">코드를 붙여넣으면 바로 검사해요</span>
                 : !problems.length ? <span className="okmsg">✓ 흔한 실수는 보이지 않아요</span>
