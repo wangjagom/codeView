@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
+import { BackBar, Header, WeekStats, reviewsGivenThisWeek } from '../components/Layout';
 import { createTeam, friendlyError, joinTeam, regenerateInvite, removeMember, setRole, updateTeam, deleteTeam } from '../lib/api';
 import { DEFAULT_TASKS } from '../lib/config';
-import { href, inviteUrl, navigate } from '../lib/router';
+import { inviteUrl, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import type { Team } from '../lib/types';
 import { copyText } from '../lib/util';
@@ -63,16 +64,17 @@ export function TeamsPage() {
   const { teams, reloadTeams, toast } = useStore();
   return (
     <section>
-      <a className="back" href={href({ name: 'feed' })}>← 목록으로</a>
-      <div className="head"><div><h1>조 만들기 · 참여하기</h1><p>지금 속한 조 {teams.length}개. 조를 바꿔도 이전 조의 코드와 리뷰는 그대로 남아요.</p></div></div>
+      <BackBar label="닫기" />
+      <h1 className="h-big tight">다른 조에<br />들어가거나 만들어요</h1>
+      <p className="muted small lead">지금 속한 조 {teams.length}개. 조를 바꿔도 이전 조의 코드와 리뷰는 그대로 남아요.</p>
       <TeamForms onDone={async (t, joined) => { await reloadTeams(t.id); toast(joined ? `'${t.name}'에 참여했어요` : `'${t.name}'을 만들었어요. 조원들을 초대해 보세요`); navigate(joined ? { name: 'feed' } : { name: 'team' }); }} />
     </section>
   );
 }
 
 /** '#/team' — 지금 조 설정 (초대, 조원 관리, 이름·과제 바꾸기, 나가기) */
-export function TeamSettings() {
-  const { me, team, isOwner, profiles, posts, reloadTeams, toast } = useStore();
+export function TeamSettings({ onTeam }: { onTeam: () => void }) {
+  const { me, team, isOwner, profiles, posts, comments, reloadTeams, toast } = useStore();
   const [name, setName] = useState(team.name);
   const [tasks, setTasks] = useState(team.tasks.join(', '));
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
@@ -85,75 +87,82 @@ export function TeamSettings() {
   };
   const copy = async (text: string, what: string) => toast((await copyText(text)) ? `${what}을 복사했어요` : `복사가 막혀 있어요. ${what}을 직접 선택해 복사해 주세요`);
 
+  const [editing, setEditing] = useState(false);
+  const pretty = team.invite_code.replace(/^(.{4})(.+)$/, '$1 $2');
+
   return (
     <section>
-      <a className="back" href={href({ name: 'feed' })}>← 목록으로</a>
-      <div className="head"><div><h1>{team.name} 설정</h1><p>{isOwner ? '조장이라 이름, 과제, 조원을 관리할 수 있어요.' : '조 정보와 초대 링크를 볼 수 있어요. 바꾸는 건 조장이 해요.'}</p></div></div>
+      <Header onTeam={onTeam} />
+      <h1 className="h-big">{team.name}</h1>
 
-      <div className="settings">
-        <div className="panel">
-          <h2>조원 초대하기</h2>
-          <div className="invite">
-            <div className="invite-row"><span className="lbl">초대 링크</span><code className="invite-link">{link}</code><button type="button" className="btn sm" onClick={() => copy(link, '초대 링크')}>링크 복사</button></div>
-            <div className="invite-row"><span className="lbl">초대 코드</span><code className="invite-code">{team.invite_code}</code><button type="button" className="btn sm" onClick={() => copy(team.invite_code, '초대 코드')}>코드 복사</button></div>
-            <p className="muted small">링크를 받은 사람은 로그인하면 바로 이 조에 들어와요. 링크가 밖으로 퍼졌다면 새 코드를 만들어 주세요. 이전 링크는 더 이상 쓸 수 없어요.</p>
-            {isOwner && <div><button type="button" className="btn ghost sm" onClick={() => run(() => regenerateInvite(team.id), '새 초대 코드를 만들었어요')}>새 초대 코드 만들기</button></div>}
-          </div>
+      <section className="invite" aria-label="조원 초대하기">
+        <span className="lab">조원 초대하기</span>
+        <span className="invite-code" aria-label={`초대 코드 ${team.invite_code}`}>{pretty}</span>
+        <span className="small sub">코드를 알려 주거나 링크를 보내면 바로 들어와요.</span>
+        <div className="acts">
+          <button type="button" className="btn white" onClick={() => copy(team.invite_code, '초대 코드')}>코드 복사</button>
+          <button type="button" className="btn primary" onClick={() => copy(link, '초대 링크')}>링크 복사</button>
         </div>
+      </section>
 
-        {isOwner && (
-          <form className="panel" onSubmit={(e) => { e.preventDefault(); const t = parseTasks(tasks); run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: t.length ? t : DEFAULT_TASKS }), '조 정보를 저장했어요'); }}>
-            <h2>조 정보</h2>
-            <div className="panel-body">
-              <div className="field"><label htmlFor="setName">조 이름</label><input id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
-              <div className="field"><label htmlFor="setTasks">과제 목록 <span className="muted">(쉼표로 구분)</span></label><input id="setTasks" value={tasks} onChange={(e) => setTasks(e.target.value)} />
-                <span className="muted small">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요.</span></div>
-              <div className="form-foot"><button className="btn primary">저장</button></div>
+      <WeekStats />
+
+      <div className="sec-h"><h2>조원 {profiles.length}명</h2>{isOwner && <button type="button" onClick={() => run(() => regenerateInvite(team.id), '새 초대 코드를 만들었어요. 이전 링크는 이제 쓸 수 없어요')}>새 초대 코드</button>}</div>
+      <div className="card list">
+        {profiles.map((p) => {
+          const given = reviewsGivenThisWeek(p.id, posts, comments);
+          return (
+            <div key={p.id} className="item">
+              <Avatar person={p} />
+              <span className="body">
+                <span className="t">{p.name}{p.id === me.id ? ' (나)' : ''}{p.role === 'owner' && <span className="role">조장</span>}</span>
+                <span className="m">올린 코드 {posts.filter((x) => x.author_id === p.id).length}개 · 이번 주 리뷰 {given}개</span>
+              </span>
+              {isOwner && p.id !== me.id && (
+                confirmRemove === p.id ? (
+                  <span className="m-act"><button type="button" className="btn sm" onClick={() => setConfirmRemove(null)}>취소</button><button type="button" className="btn sm danger-btn" onClick={() => { setConfirmRemove(null); run(() => removeMember(team.id, p.id), `${p.name}님을 내보냈어요`); }}>내보내기</button></span>
+                ) : (
+                  <span className="m-act">
+                    <button type="button" className="txt-btn" onClick={() => run(() => setRole(team.id, p.id, p.role === 'owner' ? 'member' : 'owner'), p.role === 'owner' ? `${p.name}님을 조원으로 바꿨어요` : `${p.name}님을 조장으로 지정했어요`)}>{p.role === 'owner' ? '조원으로' : '조장으로'}</button>
+                    <button type="button" className="txt-btn" onClick={() => setConfirmRemove(p.id)}>내보내기</button>
+                  </span>
+                )
+              )}
             </div>
-          </form>
+          );
+        })}
+      </div>
+
+      <div className="sec-h"><h2>과제</h2>{isOwner && <button type="button" onClick={() => setEditing(!editing)}>{editing ? '닫기' : '편집'}</button>}</div>
+      {editing && isOwner ? (
+        <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); const t = parseTasks(tasks); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: t.length ? t : DEFAULT_TASKS }), '조 정보를 저장했어요')) setEditing(false); }}>
+          <div className="field"><label htmlFor="setName">조 이름</label><input className="inp" id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field"><label htmlFor="setTasks">과제 목록 (쉼표로 구분)</label><textarea className="inp" id="setTasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} />
+            <span className="hint">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요.</span></div>
+          <button className="btn primary wide">저장</button>
+        </form>
+      ) : (
+        <div className="card list">
+          {team.tasks.map((t) => <div key={t} className="item"><span className="body"><span className="t">{t}</span></span><span className="muted small">{posts.filter((p) => p.task === t).length}개</span></div>)}
+        </div>
+      )}
+
+      <div className="foot-acts">
+        {confirm === 'leave' ? (
+          <div className="danger"><span>{team.name}에서 나갈까요? 내가 올린 코드와 리뷰는 조에 남아요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
+            <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => removeMember(team.id, me.id), `${team.name}에서 나왔어요`)) navigate({ name: 'feed' }); }}>나가기</button></div>
+        ) : confirm === 'delete' ? (
+          <div className="danger"><span>조와 모든 코드·리뷰를 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
+            <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => deleteTeam(team.id), `${team.name}을 지웠어요`)) navigate({ name: 'feed' }); }}>조 삭제</button></div>
+        ) : (
+          <>
+            <button type="button" className="txt-btn" onClick={onTeam}>다른 조로 가기</button>
+            {isOwner && owners.length === 1 && profiles.length > 1
+              ? <span className="muted small">조장은 다른 조원을 조장으로 지정한 뒤에 나갈 수 있어요</span>
+              : <button type="button" className="txt-btn red" onClick={() => setConfirm('leave')}>조 나가기</button>}
+            {isOwner && <button type="button" className="txt-btn red" onClick={() => setConfirm('delete')}>조 삭제</button>}
+          </>
         )}
-
-        <div className="panel">
-          <h2>조원 <span>{profiles.length}명</span></h2>
-          <ul className="members">
-            {profiles.map((p) => (
-              <li key={p.id}>
-                <Avatar person={p} />
-                <span className="m-name">{p.name}{p.id === me.id ? ' (나)' : ''}<small>{p.role === 'owner' ? '조장' : '조원'} · 올린 코드 {posts.filter((x) => x.author_id === p.id).length}개</small></span>
-                {isOwner && p.id !== me.id && (
-                  confirmRemove === p.id ? (
-                    <span className="m-act"><span className="small">내보낼까요?</span><button type="button" className="btn sm" onClick={() => setConfirmRemove(null)}>취소</button><button type="button" className="btn sm danger-btn" onClick={() => { setConfirmRemove(null); run(() => removeMember(team.id, p.id), `${p.name}님을 내보냈어요`); }}>내보내기</button></span>
-                  ) : (
-                    <span className="m-act">
-                      <button type="button" className="btn ghost sm" onClick={() => run(() => setRole(team.id, p.id, p.role === 'owner' ? 'member' : 'owner'), p.role === 'owner' ? `${p.name}님을 조원으로 바꿨어요` : `${p.name}님을 조장으로 지정했어요`)}>{p.role === 'owner' ? '조원으로' : '조장으로'}</button>
-                      <button type="button" className="btn ghost sm" onClick={() => setConfirmRemove(p.id)}>내보내기</button>
-                    </span>
-                  )
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="panel">
-          <h2>조 나가기</h2>
-          <div className="panel-body">
-            {confirm === 'leave' ? (
-              <div className="danger"><span>{team.name}에서 나갈까요? 내가 올린 코드와 리뷰는 조에 남아요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
-                <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => removeMember(team.id, me.id), `${team.name}에서 나왔어요`)) navigate({ name: 'feed' }); }}>나가기</button></div>
-            ) : confirm === 'delete' ? (
-              <div className="danger"><span>조와 모든 코드·리뷰를 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
-                <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => deleteTeam(team.id), `${team.name}을 지웠어요`)) navigate({ name: 'feed' }); }}>조 삭제</button></div>
-            ) : (
-              <div className="danger">
-                {isOwner && owners.length === 1 && profiles.length > 1
-                  ? <span className="muted small">조장은 다른 조원을 조장으로 지정한 뒤에 나갈 수 있어요.</span>
-                  : <button type="button" className="btn ghost sm" onClick={() => setConfirm('leave')}>이 조에서 나가기</button>}
-                {isOwner && <button type="button" className="btn ghost sm" onClick={() => setConfirm('delete')}>조 삭제</button>}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </section>
   );

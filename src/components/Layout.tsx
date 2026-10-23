@@ -1,129 +1,122 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { href, navigate } from '../lib/router';
-import { isMyTurn, useStore } from '../lib/store';
+import { useStore } from '../lib/store';
 import { weekStart } from '../lib/util';
 import { Avatar } from './Avatar';
+import { Icon } from './Icon';
 
-export type Filter = 'all' | 'turn' | 'mine' | 'done';
+export type Filter = 'all' | 'turn' | 'mine' | 'done' | 'wait' | 'doing';
 
-export function Layout({ view, filter, task, onFilter, onTask, children }: {
-  view: string; filter: Filter; task: string; onFilter: (f: Filter) => void; onTask: (t: string) => void; children: ReactNode;
+/** 하단 탭을 보여 줄 화면 (나머지는 뒤로 가기 + 화면 아래 버튼) */
+const TAB_VIEWS = new Set(['feed', 'join', 'team', 'me']);
+const TABS = [
+  { view: 'feed', label: '홈', icon: 'home', to: href({ name: 'feed' }) },
+  { view: 'new', label: '올리기', icon: 'plus', to: href({ name: 'new' }) },
+  { view: 'team', label: '내 조', icon: 'team', to: href({ name: 'team' }) },
+  { view: 'me', label: '내 정보', icon: 'me', to: href({ name: 'me' }) },
+] as const;
+
+export function Layout({ view, sheet, onSheet, children }: {
+  view: string; sheet: boolean; onSheet: (open: boolean) => void; children: ReactNode;
 }) {
-  const { me, team, posts, comments } = useStore();
-  const turns = posts.filter((p) => isMyTurn(p, me.id, comments)).length;
-  const items: { f: Filter; label: string; n: number; hot?: boolean }[] = [
-    { f: 'all', label: '전체', n: posts.length },
-    { f: 'turn', label: '내 리뷰 차례', n: turns, hot: true },
-    { f: 'mine', label: '내가 올린 코드', n: posts.filter((p) => p.author_id === me.id).length },
-    { f: 'done', label: '해결됨', n: posts.filter((p) => p.status === 'done').length },
-  ];
-  const go = (f: Filter) => { onFilter(f); navigate({ name: 'feed' }); };
-
-  return (
-    <div className="shell" data-view={view}>
-      <aside className="nav">
-        <a className="brand" href={href({ name: 'feed' })}><span className="mark">cv</span>codeView</a>
-        <TeamSwitcher />
-        <a className="btn primary wide" href={href({ name: 'new' })}>+ 코드 올리기</a>
-        <nav className="menu" aria-label="보기">
-          {items.map((it) => (
-            <button key={it.f} type="button" aria-current={view === 'feed' && filter === it.f} onClick={() => go(it.f)}>
-              <span>{it.label}</span>
-              {(!it.hot || it.n > 0) && <span className={`badge ${it.hot ? 'hot' : ''}`}>{it.n}</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="menu-h">과제</div>
-        <div className="tasks">
-          {team.tasks.map((t) => (
-            <button key={t} type="button" aria-pressed={task === t} onClick={() => { onTask(task === t ? '' : t); navigate({ name: 'feed' }); }}>{t}</button>
-          ))}
-        </div>
-        <a className="me-link" href={href({ name: 'me' })}><Avatar person={me} size="xs" />{me.name}<span className="me-hint">내 정보</span></a>
-      </aside>
-      <main>{children}</main>
-      <RightPanel />
-    </div>
-  );
-}
-
-function TeamSwitcher() {
-  const { team, teams, profiles, switchTeam } = useStore();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const withTabs = TAB_VIEWS.has(view);
   useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close); document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
-  }, [open]);
+    document.body.dataset.page = view === 'new' || view === 'teams' ? 'form' : '';
+    return () => { document.body.dataset.page = ''; };
+  }, [view]);
 
   return (
-    <div className="team" ref={ref}>
-      <button type="button" className="team-btn" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
-        <span className="team-txt"><b>{team.name}</b><small>{profiles.length}명 · {team.role === 'owner' ? '조장' : '조원'}</small></span>
-        <span className="caret" aria-hidden="true">▾</span>
-      </button>
-      <div className="faces">{profiles.slice(0, 8).map((p) => <Avatar key={p.id} person={p} size="xs" />)}</div>
-      {open && (
-        <div className="team-menu" role="menu">
+    <>
+      <div className={`app ${withTabs ? 'with-tabs' : ''}`} data-view={view}>{children}</div>
+      {withTabs && (
+        <nav className="tabbar" aria-label="메뉴">
+          <div className="tabbar-in">
+            {TABS.map((t) => (
+              <a key={t.view} className="tab" href={t.to} aria-current={view === t.view || (t.view === 'feed' && view === 'join') ? 'page' : undefined}>
+                <Icon name={t.icon} />{t.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      )}
+      {sheet && <TeamSheet onClose={() => onSheet(false)} />}
+    </>
+  );
+}
+
+/** 탭 화면 위쪽: 로고 자리(비워 둠) + 서비스 이름 + 조 바꾸기 */
+export function Header({ onTeam }: { onTeam: () => void }) {
+  const { team } = useStore();
+  return (
+    <header className="hd">
+      <a className="brand" href={href({ name: 'feed' })}><span className="logo-slot" aria-hidden="true" /><span className="wordmark">codeView</span></a>
+      <span className="sp" />
+      <button type="button" className="team-pill" onClick={onTeam} aria-haspopup="dialog">{team.name}<Icon name="down" /></button>
+    </header>
+  );
+}
+
+/** 뒤로 가기가 있는 화면 위쪽 */
+export function BackBar({ label = '목록', to = href({ name: 'feed' }) }: { label?: string; to?: string }) {
+  return <a className="back" href={to}><Icon name="back" />{label}</a>;
+}
+
+/** 아래에서 올라오는 조 고르기 */
+function TeamSheet({ onClose }: { onClose: () => void }) {
+  const { team, teams, switchTeam } = useStore();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="sheet" role="dialog" aria-label="조 고르기">
+        <h3>조 고르기</h3>
+        <div className="sheet-list">
           {teams.map((t) => (
-            <button key={t.id} type="button" role="menuitemradio" aria-checked={t.id === team.id} onClick={() => { setOpen(false); switchTeam(t.id); }}>
-              <span>{t.name}</span>{t.id === team.id && <span aria-hidden="true">✓</span>}
+            <button key={t.id} type="button" className="item" onClick={() => { onClose(); switchTeam(t.id); }}>
+              <span className="body"><span className="t">{t.name}</span><span className="m">{t.role === 'owner' ? '조장' : '조원'}</span></span>
+              {t.id === team.id && <span className="check-mark" aria-label="지금 보는 조">✓</span>}
             </button>
           ))}
-          <hr />
-          <a role="menuitem" href={href({ name: 'team' })} onClick={() => setOpen(false)}>조 설정 · 초대하기</a>
-          <a role="menuitem" href={href({ name: 'teams' })} onClick={() => setOpen(false)}>다른 조 만들기 · 참여하기</a>
         </div>
-      )}
+        <button type="button" className="btn soft wide" onClick={() => { onClose(); navigate({ name: 'teams' }); }}>초대 코드로 참여 · 새 조 만들기</button>
+        <button type="button" className="btn wide" onClick={() => { onClose(); navigate({ name: 'team' }); }}>{team.name} 설정 · 초대하기</button>
+      </div>
     </div>
   );
 }
 
-function RightPanel() {
+/** 이번 주 조 현황 (내 조 화면에서 보여 줘요) */
+export function WeekStats() {
   const { profiles, posts, comments } = useStore();
   const since = weekStart();
   const inWeek = (iso: string) => new Date(iso) >= since;
   const authorOf = new Map(posts.map((p) => [p.id, p.author_id]));
   const weekComments = comments.filter((c) => inWeek(c.created_at));
   const given = (id: string) => weekComments.filter((c) => c.author_id === id && authorOf.get(c.post_id) !== id).length;
-  const max = Math.max(1, ...profiles.map((p) => given(p.id)));
   const end = new Date(since); end.setDate(end.getDate() + 6);
   const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  const top = [...profiles].sort((a, b) => given(b.id) - given(a.id))[0];
 
   return (
-    <aside className="right">
-      <div className="panel">
-        <h2>이번 주 <span>{md(since)} – {md(end)}</span></h2>
-        <div className="stats">
-          <div><b>{posts.filter((p) => inWeek(p.created_at)).length}</b><small>리뷰 요청</small></div>
-          <div><b>{weekComments.length}</b><small>남긴 리뷰</small></div>
-          <div><b>{posts.filter((p) => p.status === 'done' && inWeek(p.updated_at)).length}</b><small>해결</small></div>
-        </div>
+    <>
+      <div className="sec-h"><h2>이번 주</h2><span className="muted small">{md(since)} – {md(end)}</span></div>
+      <div className="card stats">
+        <div><b>{posts.filter((p) => inWeek(p.created_at)).length}</b><small>리뷰 요청</small></div>
+        <div><b>{weekComments.length}</b><small>남긴 리뷰</small></div>
+        <div><b>{posts.filter((p) => p.status === 'done' && inWeek(p.updated_at)).length}</b><small>해결</small></div>
       </div>
-      <div className="panel">
-        <h2>조원 <span>이번 주 리뷰 수</span></h2>
-        <ul className="mates">
-          {profiles.map((p) => (
-            <li key={p.id}>
-              <Avatar person={p} />
-              <span>{p.name}<small>올린 코드 {posts.filter((x) => x.author_id === p.id).length}개</small></span>
-              <span className="mate-n"><span className="bar"><i style={{ width: `${(given(p.id) / max) * 100}%` }} /></span><b>{given(p.id)}</b></span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="panel">
-        <h2>우리 조 리뷰 규칙</h2>
-        <ol className="rule">
-          <li>리뷰 요청은 24시간 안에 한 명 이상 답해요</li>
-          <li>지적할 땐 이유와 고친 코드를 같이 남겨요</li>
-          <li>해결되면 올린 사람이 해결됨으로 바꿔요</li>
-        </ol>
-      </div>
-    </aside>
+      {top && given(top.id) > 0 && (
+        <p className="cheer"><Avatar person={top} size="xs" /><span><b>{top.name}</b>님이 이번 주 리뷰를 가장 많이 남겼어요 · {given(top.id)}개</span></p>
+      )}
+    </>
   );
+}
+
+export function reviewsGivenThisWeek(profileId: string, posts: { id: string; author_id: string }[], comments: { post_id: string; author_id: string; created_at: string }[]) {
+  const since = weekStart();
+  const authorOf = new Map(posts.map((p) => [p.id, p.author_id]));
+  return comments.filter((c) => new Date(c.created_at) >= since && c.author_id === profileId && authorOf.get(c.post_id) !== profileId).length;
 }

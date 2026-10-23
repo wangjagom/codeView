@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Avatar, StatusPill } from '../components/Avatar';
+import { Icon } from '../components/Icon';
+import { BackBar } from '../components/Layout';
 import { CodeView } from '../components/CodeView';
 import { addLineComment, applySuggestion, deletePost, friendlyError, getPost, setResolved, setStatus } from '../lib/api';
 import { checkCode } from '../lib/checks';
@@ -27,7 +29,7 @@ export function PostDetail({ id }: { id: string }) {
   const shownCode = viewVersion && data ? data.versions.find((v) => v.version === viewVersion)?.code ?? post?.code ?? '' : post?.code ?? '';
   const problems = useMemo(() => (post ? checkCode(shownCode, post.lang) : []), [shownCode, post]);
 
-  if (error) return <section><a className="back" href={href({ name: 'feed' })}>← 목록으로</a><div className="empty">{error}</div></section>;
+  if (error) return <section><BackBar /><div className="empty">{error}</div></section>;
   if (!data || !post) return <section><div className="empty">불러오는 중…</div></section>;
 
   const author = person(post.author_id);
@@ -56,38 +58,36 @@ export function PostDetail({ id }: { id: string }) {
 
   return (
     <section>
-      <a className="back" href={href({ name: 'feed' })}>← 목록으로</a>
-      <div className="d-head">
-        <div className="d-row"><h1>{post.title}</h1><StatusPill status={post.status} /></div>
-        <div className="d-by">
-          <Avatar person={author} size="xs" /><b>{author.name}</b><span>{timeAgo(post.created_at)}</span>
-          <span className="file">{post.file_name}</span><span>{langLabel(post.lang)}</span><span className="pill task">{post.task}</span>
+      <BackBar />
+      <div className="meta-row"><Avatar person={author} size="xs" /><b>{author.name}</b><span className="dot" />{timeAgo(post.created_at)}<span className="dot" />{post.task}</div>
+      <h1 className="h-big tight">{post.title}</h1>
+      {post.ask && <div className="ask"><span className="lbl">받고 싶은 피드백</span><span className="body">{post.ask}</span></div>}
+      <div className="card status-card">
+        <div className="status-row">
+          <StatusPill status={post.status} />
+          {post.reviewer_ids.length > 0 && <span className="revs">리뷰어 {post.reviewer_ids.map((rid) => <Avatar key={rid} person={person(rid)} size="xs" />)}</span>}
+          <span className="sp" />
+          <span className="muted small">리뷰 {reviewCount}</span>
         </div>
-        {post.ask && <div className="ask"><Avatar person={author} /><div><b>받고 싶은 피드백</b><span className="body">{post.ask}</span></div></div>}
-      </div>
-      <div className="d-bar">
-        {e > 0 && <span className="pill e">오류 {e}</span>}
-        {w > 0 && <span className="pill w">경고 {w}</span>}
-        {!e && !w && <span className="pill okp">자동 검사 통과</span>}
-        <span className="pill cmc">리뷰 {reviewCount}</span>
-        {post.reviewer_ids.length > 0 && <span className="revs">리뷰어 {post.reviewer_ids.map((rid) => <Avatar key={rid} person={person(rid)} size="xs" />)}</span>}
-        <span className="sp" />
         {isAuthor ? (
-          <span className="seg" role="group" aria-label="상태 바꾸기">
+          <div className="seg seg3" role="group" aria-label="상태 바꾸기">
             {(Object.keys(STATUS_LABEL) as Status[]).map((s) => <button key={s} type="button" aria-pressed={post.status === s} onClick={() => onStatus(s)}>{STATUS_LABEL[s]}</button>)}
-          </span>
+          </div>
         ) : <span className="muted small">상태는 {author.name}님이 바꿔요</span>}
       </div>
 
       <div className="d-grid">
         <div className="code">
-          <div className="code-bar">
-            {readOnly ? <span><b>v{viewVersion}</b>을 보고 있어요 · 지난 버전에는 리뷰를 달 수 없어요</span>
-              : <span>줄 번호 왼쪽의 <b>+</b>를 눌러 그 줄에 리뷰를 남겨요</span>}
+          <div className="code-h">
+            <span className="file">{post.file_name}</span><span className="muted small">{langLabel(post.lang)}</span>
+            {e > 0 && <span className="pill e">오류 {e}</span>}
+            {w > 0 && <span className="pill w">경고 {w}</span>}
+            {!e && !w && <span className="pill ok">검사 통과</span>}
             <span className="sp" />
-            <button type="button" className="btn sm" onClick={copyCode}>코드 복사</button>
-            <button type="button" className="btn sm" onClick={copyDiscord}>디스코드용 복사</button>
+            <button type="button" className="txt-btn" onClick={copyCode}>복사</button>
+            <button type="button" className="txt-btn" onClick={copyDiscord}>디스코드용</button>
           </div>
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b>을 보고 있어요. 지난 버전에는 리뷰를 달 수 없어요.</> : <>줄 번호 왼쪽의 <b>+</b>를 눌러 그 줄에 리뷰를 남겨요</>}</p>
           <CodeView code={shownCode} lang={post.lang} problems={problems} threads={readOnly ? [] : data.threads} person={person}
             isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} />
           {!readOnly && data.threads.length === 0 && (
@@ -96,22 +96,20 @@ export function PostDetail({ id }: { id: string }) {
           )}
         </div>
 
-        <div className="panel">
-          <h2>버전 <span>{data.versions.length}개</span></h2>
-          <ul className="vers">
+        <div>
+          <div className="sec-h"><h2>버전</h2><span className="muted small">{data.versions.length}개</span></div>
+          <div className="card list">
             {[...data.versions].reverse().map((v) => {
               const current = v.version === post.version;
               const active = (viewVersion ?? post.version) === v.version;
               return (
-                <li key={v.version} className={active ? 'cur' : ''}>
-                  <button type="button" onClick={() => setViewVersion(current ? null : v.version)}>
-                    <span className="vd" />
-                    <span>v{v.version} · {v.note}{current ? ' (지금)' : ''}<small>{person(v.created_by).name} · {timeAgo(v.created_at)}</small></span>
-                  </button>
-                </li>
+                <button key={v.version} type="button" className={`item ${active ? 'active' : ''}`} onClick={() => setViewVersion(current ? null : v.version)}>
+                  <span className="body"><span className="t">v{v.version} · {v.note}</span><span className="m">{person(v.created_by).name} · {timeAgo(v.created_at)}</span></span>
+                  {current ? <span className="pill n">지금</span> : active ? <span className="pill ok">보는 중</span> : <Icon name="chev" className="chev" />}
+                </button>
               );
             })}
-          </ul>
+          </div>
         </div>
 
         {isAuthor && (
@@ -119,7 +117,7 @@ export function PostDetail({ id }: { id: string }) {
             {confirmDelete ? (
               <><span>이 코드와 리뷰를 모두 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirmDelete(false)}>취소</button>
                 <button type="button" className="btn sm danger-btn" onClick={async () => { try { await deletePost(post.id); await refresh(); toast('삭제했어요'); navigate({ name: 'feed' }); } catch (err) { toast(friendlyError(err)); } }}>삭제</button></>
-            ) : <button type="button" className="btn ghost sm" onClick={() => setConfirmDelete(true)}>이 글 삭제</button>}
+            ) : <button type="button" className="txt-btn red" onClick={() => setConfirmDelete(true)}>이 글 삭제</button>}
           </div>
         )}
       </div>

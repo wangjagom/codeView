@@ -32,6 +32,7 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [task, setTask] = useState('');
+  const [sheet, setSheet] = useState(false);
   const toastTimer = useRef<number>(0);
   const teamRef = useRef<string | null>(null);
   teamRef.current = teamId;
@@ -158,13 +159,13 @@ export default function App() {
   if (!isConfigured) return <SetupNotice />;
   if (phase === 'loading') return <div className="auth"><p className="muted">불러오는 중…</p></div>;
   if (phase === 'signedOut') return <Login invited={route.name === 'join' || Boolean(pendingCode.get())} />;
-  if (phase === 'error') return <AuthCard><h1>문제가 생겼어요</h1><p>{error}</p><button type="button" className="btn" onClick={() => location.reload()}>다시 시도</button></AuthCard>;
+  if (phase === 'error') return <AuthCard><h1 className="h-big">문제가 생겼어요</h1><p>{error}</p><button type="button" className="btn" onClick={() => location.reload()}>다시 시도</button></AuthCard>;
   if (phase === 'onboarding' && session) return <Onboarding userId={session.user.id} onDone={() => boot(session)} onSignOut={signOut} />;
   if (phase === 'noTeam' && session) {
     return (
       <>
         <AuthCard wide>
-          <h1>함께 리뷰할 조를 정해요</h1>
+          <h1 className="h-big">함께 리뷰할<br />조를 정해요</h1>
           <p>초대 코드로 조에 들어가거나, 새 조를 만들어 조원들을 초대해요.</p>
           <TeamForms initialError={joinError} onDone={async (t) => { setJoinError(''); await pickTeam(session.user.id, t.id); if (t.created_by === session.user.id) navigate({ name: 'team' }); }} />
           <button type="button" className="btn ghost sm" onClick={signOut}>로그아웃</button>
@@ -177,13 +178,13 @@ export default function App() {
 
   return (
     <StoreContext.Provider value={store}>
-      <Layout view={route.name} filter={filter} task={task} onFilter={setFilter} onTask={setTask}>
+      <Layout view={route.name} sheet={sheet} onSheet={setSheet}>
         {joinError && <div className="notice" role="alert">{joinError}<button type="button" className="btn ghost sm" onClick={() => setJoinError('')}>닫기</button></div>}
-        {(route.name === 'feed' || route.name === 'join') && <Feed filter={filter} task={task} />}
+        {(route.name === 'feed' || route.name === 'join') && <Feed filter={filter} task={task} onFilter={setFilter} onTask={setTask} onTeam={() => setSheet(true)} />}
         {route.name === 'new' && <NewPost />}
         {route.name === 'post' && <PostDetail id={route.id} />}
-        {route.name === 'me' && <Me />}
-        {route.name === 'team' && <TeamSettings key={store.team.id} />}
+        {route.name === 'me' && <Me onTeam={() => setSheet(true)} />}
+        {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
         {route.name === 'teams' && <TeamsPage />}
       </Layout>
       {toastEl}
@@ -194,7 +195,7 @@ export default function App() {
 function SetupNotice() {
   return (
     <AuthCard>
-      <h1>Supabase 설정이 필요해요</h1>
+      <h1 className="h-big">Supabase 설정이 필요해요</h1>
       <p><code>.env</code> 파일에 <code>VITE_SUPABASE_URL</code>과 <code>VITE_SUPABASE_ANON_KEY</code>를 넣고 다시 실행해 주세요.</p>
       <p className="muted small">자세한 순서는 README의 "처음 설정하기"에 있어요.</p>
     </AuthCard>

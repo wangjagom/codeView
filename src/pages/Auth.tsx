@@ -7,7 +7,7 @@ export function AuthCard({ children, wide }: { children: ReactNode; wide?: boole
   return (
     <div className="auth">
       <div className={`auth-card ${wide ? 'wide' : ''}`}>
-        <div className="brand"><span className="mark">cv</span>codeView</div>
+        <div className="brand"><span className="logo-slot" aria-hidden="true" /><span className="wordmark">codeView</span></div>
         {children}
       </div>
     </div>
@@ -44,8 +44,8 @@ export function Login({ invited }: { invited?: boolean }) {
 
   return (
     <AuthCard>
-      <h1>{invited ? '조에 초대받았어요' : '조원끼리 코드 리뷰하는 곳'}</h1>
-      <div className="seg auth-seg" role="tablist" aria-label="로그인 방식">
+      <h1 className="h-big">{invited ? <>초대받은 조에<br />들어가 볼까요?</> : mode === 'up' ? <>조원끼리 코드를<br />주고받으며 리뷰해요</> : <>다시 오셨네요</>}</h1>
+      <div className="seg" role="tablist" aria-label="로그인 방식">
         <button type="button" role="tab" aria-pressed={mode === 'in'} aria-selected={mode === 'in'} onClick={() => switchMode('in')}>로그인</button>
         <button type="button" role="tab" aria-pressed={mode === 'up'} aria-selected={mode === 'up'} onClick={() => switchMode('up')}>처음이에요</button>
       </div>
@@ -81,7 +81,7 @@ export function Onboarding({ userId, onDone, onSignOut }: { userId: string; onDo
   const [err, setErr] = useState('');
   return (
     <AuthCard>
-      <h1>조원들에게 보일 이름을 정해요</h1>
+      <h1 className="h-big">조원들에게 보일<br />이름을 정해요</h1>
       <form className="auth-form" onSubmit={async (e) => {
         e.preventDefault();
         const problem = nameProblem(name); if (problem) { setErr(problem); return; }

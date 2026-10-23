@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
+import { BackBar } from '../components/Layout';
 import { createPost, friendlyError } from '../lib/api';
 import { checkCode } from '../lib/checks';
 import { LANGS, langFromCode, langFromFile } from '../lib/langs';
@@ -55,9 +56,9 @@ export function NewPost() {
 
   return (
     <section>
-      <a className="back" href={href({ name: 'feed' })}>← 목록으로</a>
-      <div className="head"><div><h1>코드 올리기</h1><p>붙여넣으면 흔한 실수를 먼저 짚어 줘요. 조원에게 리뷰를 부탁해 보세요.</p></div></div>
-      <form className="form" onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
+      <BackBar label="닫기" />
+      <h1 className="h-big tight">어떤 코드를<br />봐 드릴까요?</h1>
+      <form className="form" id="newPostForm" onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder="예: 삭제 버튼을 누르면 다른 항목이 지워져요" onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
           <div className="field"><label htmlFor="nTask">과제</label>
@@ -86,21 +87,20 @@ export function NewPost() {
           </div>
         </div>
         <div className="field"><label htmlFor="nAsk">어떤 피드백을 받고 싶어요?</label><textarea id="nAsk" rows={2} value={ask} maxLength={2000} placeholder="예: 버튼을 누르기도 전에 화면이 멈춰요. 원인이 뭘까요?" onChange={(ev) => { setAsk(ev.target.value); persist({ ask: ev.target.value }); }} /></div>
-        <div className="field"><span className="lbl">리뷰 부탁할 조원</span>
+        <div className="field"><span className="lbl">누구에게 부탁할까요?</span>
           <div className="picks">
             {mates.length ? mates.map((p) => (
               <button key={p.id} type="button" className="pick" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>
-                <Avatar person={p} size="xs" />{p.name}
+                <Avatar person={p} size="lg" />{p.name}
               </button>
             )) : <span className="muted">아직 다른 조원이 없어요. <a href={href({ name: 'team' })}>초대 링크</a>를 보내 보세요.</span>}
           </div>
         </div>
-        <div className="form-foot">
-          <span className="note">쓰는 중인 내용은 이 브라우저에 임시 저장돼요</span>
-          <a className="btn ghost" href={href({ name: 'feed' })}>취소</a>
-          <button className="btn primary" disabled={busy}>{busy ? '올리는 중…' : '리뷰 요청하기'}</button>
-        </div>
+        <p className="muted small">쓰는 중인 내용은 이 브라우저에 임시 저장돼요.</p>
       </form>
+      <div className="dock"><div className="dock-in">
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? '올리는 중…' : picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰 요청하기` : '리뷰 요청하기'}</button>
+      </div></div>
     </section>
   );
 }
