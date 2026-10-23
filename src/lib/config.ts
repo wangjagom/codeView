@@ -1,7 +1,18 @@
 const env = import.meta.env;
 
-export const SUPABASE_URL: string = env.VITE_SUPABASE_URL ?? '';
-export const SUPABASE_ANON_KEY: string = env.VITE_SUPABASE_ANON_KEY ?? '';
+/** 'https://xxx.supabase.co/rest/v1/'처럼 경로가 붙어 있어도 주소 부분만 써요. */
+export function normalizeSupabaseUrl(raw: string | undefined): string {
+  const v = (raw ?? '').trim().replace(/^['"]|['"]$/g, '');
+  if (!v) return '';
+  try {
+    return new URL(/^https?:\/\//.test(v) ? v : `https://${v}`).origin;
+  } catch {
+    return v;
+  }
+}
+
+export const SUPABASE_URL: string = normalizeSupabaseUrl(env.VITE_SUPABASE_URL);
+export const SUPABASE_ANON_KEY: string = (env.VITE_SUPABASE_ANON_KEY ?? '').trim().replace(/^['"]|['"]$/g, '');
 export const DEFAULT_TASKS = ['자유 질문'];
 
 export const LANGS = ['JavaScript', 'TypeScript', 'JSX', 'TSX', 'CSS', 'HTML', 'Python', 'Java', 'SQL'] as const;

@@ -143,6 +143,8 @@ export function friendlyError(e: unknown): string {
   if (/[Aa]nonymous sign-ins are disabled/.test(msg)) return '아직 이메일 없이 시작하기가 꺼져 있어요. Supabase에서 Allow anonymous sign-ins를 켜 주세요.';
   if (/rate limit/i.test(msg)) return '요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요.';
   if (/already been registered|already registered|email_exists/i.test(msg)) return '이미 다른 계정에서 쓰는 이메일이에요. 다른 이메일을 넣어 주세요.';
+  if (/Invalid path specified/.test(msg)) return 'Supabase 주소 설정이 잘못됐어요. VITE_SUPABASE_URL에 https://<프로젝트>.supabase.co 만 넣어 주세요.';
+  if (/Invalid API key|No API key/i.test(msg)) return 'Supabase 키 설정이 잘못됐어요. VITE_SUPABASE_ANON_KEY에 anon(public) 키를 넣어 주세요.';
   if (/Failed to fetch|NetworkError/.test(msg)) return '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';
   return msg;
 }
