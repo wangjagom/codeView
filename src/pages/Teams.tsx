@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
+import { CopyButton } from '../components/CopyButton';
 import { BackBar, Header, WeekStats, reviewsGivenThisWeek } from '../components/Layout';
 import { createTeam, friendlyError, joinTeam, regenerateInvite, removeMember, setRole, updateTeam, deleteTeam } from '../lib/api';
 import { DEFAULT_TASKS } from '../lib/config';
 import { inviteUrl, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import type { Team } from '../lib/types';
-import { copyText } from '../lib/util';
 
 /** 콤마나 줄바꿈으로 구분한 과제 목록을 정리해요. */
 export function parseTasks(text: string): string[] {
@@ -85,7 +85,6 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try { await fn(); await reloadTeams(team.id); toast(ok); return true; } catch (e) { toast(friendlyError(e)); return false; }
   };
-  const copy = async (text: string, what: string) => toast((await copyText(text)) ? `${what}을 복사했어요` : `복사가 막혀 있어요. ${what}을 직접 선택해 복사해 주세요`);
 
   const [editing, setEditing] = useState(false);
   const pretty = team.invite_code.replace(/^(.{4})(.+)$/, '$1 $2');
@@ -100,8 +99,8 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
         <span className="invite-code" aria-label={`초대 코드 ${team.invite_code}`}>{pretty}</span>
         <span className="small sub">코드를 알려 주거나 링크를 보내면 바로 들어와요.</span>
         <div className="acts">
-          <button type="button" className="btn white" onClick={() => copy(team.invite_code, '초대 코드')}>코드 복사</button>
-          <button type="button" className="btn primary" onClick={() => copy(link, '초대 링크')}>링크 복사</button>
+          <CopyButton className="big white" text={() => team.invite_code} label="코드 복사" onFail={toast} />
+          <CopyButton className="big primary" text={() => link} label="초대 링크 복사" icon="link" onFail={toast} />
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { Problem } from '../lib/checks';
 import { highlight, highlightWithMark } from '../lib/highlight';
+import { Icon } from './Icon';
 
 interface Props {
   id: string;
@@ -9,13 +10,14 @@ interface Props {
   problems: Problem[];
   placeholder?: string;
   onChange: (v: string) => void;
+  onToast?: (msg: string) => void;
 }
 
 /**
  * VS Code(Dark Modern)처럼 보이는 코드 입력칸.
  * 투명한 textarea 뒤에 같은 글자를 색칠한 <pre>를 깔아서, 입력은 그대로 되고 색만 보여요.
  */
-export function CodeEditor({ id, value, lang, problems, placeholder, onChange }: Props) {
+export function CodeEditor({ id, value, lang, problems, placeholder, onChange, onToast }: Props) {
   const preRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => value.split('\n'), [value]);
@@ -33,7 +35,18 @@ export function CodeEditor({ id, value, lang, problems, placeholder, onChange }:
 
   return (
     <div className="editor">
-      <div className="ed-bar" aria-hidden="true"><i /><i /><i /><span>{lines.length}줄</span></div>
+      <div className="ed-bar">
+        <span className="ed-dots" aria-hidden="true"><i /><i /><i /></span>
+        <span className="ed-info">{value ? `${lines.length}줄` : '비어 있어요'}</span>
+        <span className="ed-sp" />
+        <button type="button" className="ed-act" onClick={async () => {
+          try {
+            const t = await navigator.clipboard.readText();
+            if (t) { onChange(t); document.getElementById(id)?.focus(); } else onToast?.('클립보드가 비어 있어요');
+          } catch { document.getElementById(id)?.focus(); onToast?.('여기를 길게 누르거나 Ctrl/⌘ + V로 붙여넣어 주세요'); }
+        }}><Icon name="paste" />붙여넣기</button>
+        {value && <button type="button" className="ed-act" onClick={() => { onChange(''); document.getElementById(id)?.focus(); }}><Icon name="trash" />지우기</button>}
+      </div>
       <div className="ed-body" style={{ ['--ed-h' as string]: `${Math.min(560, Math.max(200, lines.length * 22.1 + 48))}px` }}>
         <div className="ed-gutter" ref={gutterRef} aria-hidden="true">
           {lines.map((_, i) => { const p = bad.get(i + 1); return <div key={i} className={p ? `g-${p.sev}` : ''}>{i + 1}</div>; })}

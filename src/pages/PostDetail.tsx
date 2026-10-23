@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Avatar, StatusPill } from '../components/Avatar';
+import { CopyButton } from '../components/CopyButton';
 import { Icon } from '../components/Icon';
 import { BackBar } from '../components/Layout';
 import { CodeView } from '../components/CodeView';
@@ -9,7 +10,7 @@ import { fenceOf, langLabel } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import { STATUS_LABEL, type Post, type Status, type Suggestion, type Thread, type Version } from '../lib/types';
-import { copyText, timeAgo } from '../lib/util';
+import { timeAgo } from '../lib/util';
 
 export function PostDetail({ id }: { id: string }) {
   const { me, person, tick, refresh, toast } = useStore();
@@ -48,12 +49,10 @@ export function PostDetail({ id }: { id: string }) {
   const onApply = (cid: string) => { run(() => applySuggestion(cid), '제안을 적용했어요'); };
   const onStatus = (s: Status) => { run(() => setStatus(post.id, s), `'${STATUS_LABEL[s]}'(으)로 바꿨어요`); };
 
-  const copyCode = async () => toast((await copyText(shownCode)) ? '코드를 복사했어요' : '복사가 막혀 있어요. 코드를 직접 선택해 복사해 주세요');
-  const copyDiscord = async () => {
-    const link = location.href.split('#')[0] + href({ name: 'post', id: post.id });
+  const postLink = () => location.href.split('#')[0] + href({ name: 'post', id: post.id });
+  const chatText = () => {
     const summary = `${e || w ? `오류 ${e} · 경고 ${w} · ` : ''}리뷰 ${reviewCount}`;
-    const text = `**${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${fenceOf(post.lang)}\n${shownCode}\n\`\`\`\n${summary}\n${link}`;
-    toast((await copyText(text)) ? '디스코드에 붙여넣을 내용을 복사했어요' : '복사가 막혀 있어요');
+    return `**${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${fenceOf(post.lang)}\n${shownCode}\n\`\`\`\n${summary}\n${postLink()}`;
   };
 
   return (
@@ -83,11 +82,13 @@ export function PostDetail({ id }: { id: string }) {
             {e > 0 && <span className="pill e">오류 {e}</span>}
             {w > 0 && <span className="pill w">경고 {w}</span>}
             {!e && !w && <span className="pill ok">검사 통과</span>}
-            <span className="sp" />
-            <button type="button" className="txt-btn" onClick={copyCode}>복사</button>
-            <button type="button" className="txt-btn" onClick={copyDiscord}>디스코드용</button>
           </div>
-          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b>을 보고 있어요. 지난 버전에는 리뷰를 달 수 없어요.</> : <>줄 번호 왼쪽의 <b>+</b>를 눌러 그 줄에 리뷰를 남겨요</>}</p>
+          <div className="code-tools" role="group" aria-label="복사">
+            <CopyButton text={() => shownCode} label="코드 복사" onFail={toast} />
+            <CopyButton text={chatText} label="채팅용 복사" icon="chat" onFail={toast} />
+            <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
+          </div>
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b>을 보고 있어요. 지난 버전에는 리뷰를 달 수 없어요.</> : <>줄 번호를 누르면 그 줄에 리뷰를 남길 수 있어요</>}</p>
           <CodeView code={shownCode} lang={post.lang} problems={problems} threads={readOnly ? [] : data.threads} person={person}
             isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} />
           {!readOnly && data.threads.length === 0 && (
@@ -117,7 +118,7 @@ export function PostDetail({ id }: { id: string }) {
             {confirmDelete ? (
               <><span>이 코드와 리뷰를 모두 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirmDelete(false)}>취소</button>
                 <button type="button" className="btn sm danger-btn" onClick={async () => { try { await deletePost(post.id); await refresh(); toast('삭제했어요'); navigate({ name: 'feed' }); } catch (err) { toast(friendlyError(err)); } }}>삭제</button></>
-            ) : <button type="button" className="txt-btn red" onClick={() => setConfirmDelete(true)}>이 글 삭제</button>}
+            ) : <button type="button" className="txt-btn red with-ic" onClick={() => setConfirmDelete(true)}><Icon name="trash" />이 글 삭제</button>}
           </div>
         )}
       </div>

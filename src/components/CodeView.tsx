@@ -4,6 +4,7 @@ import { highlight, highlightWithMark } from '../lib/highlight';
 import type { Profile, Suggestion, Thread } from '../lib/types';
 import { timeAgo } from '../lib/util';
 import { Avatar, RichText } from './Avatar';
+import { Icon } from './Icon';
 
 interface Props {
   code: string;
@@ -55,7 +56,8 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                   </button>
                 )}
               </div>
-              <div className="num">{ln}</div>
+              {readOnly ? <div className="num">{ln}</div>
+                : <button type="button" className="num" tabIndex={-1} aria-hidden="true" onClick={() => setComposer(composer === ln ? null : ln)}>{ln}</button>}
               <div className="txt" dangerouslySetInnerHTML={{ __html: html || ' ' }} />
             </div>
             {(prob || ts.length > 0 || composer === ln) && (
@@ -115,7 +117,7 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
                     <span className="sp" />
                     {c.applied_at ? <span className="applied">적용됨</span>
                       : state === 'stale' ? <span>코드가 바뀌어 적용할 수 없어요</span>
-                      : isAuthor && !readOnly ? <button type="button" className="btn primary sm" onClick={() => onApply?.(c.id)}>제안 적용</button>
+                      : isAuthor && !readOnly ? <button type="button" className="btn primary sm with-ic" onClick={() => onApply?.(c.id)}><Icon name="check" />제안 적용</button>
                       : <span>글쓴이가 적용할 수 있어요</span>}
                   </div>
                   <div className="diff">
@@ -129,7 +131,7 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
         );
       })}
       {readOnly ? null : thread.resolved ? (
-        <div className="reply"><span className="applied">✓ 해결된 대화</span><span className="sp" /><button type="button" className="btn ghost sm" onClick={() => onResolve?.(thread.id, false)}>다시 열기</button></div>
+        <div className="reply"><span className="applied">✓ 해결된 대화</span><span className="sp" /><button type="button" className="act-btn" onClick={() => onResolve?.(thread.id, false)}>다시 열기</button></div>
       ) : (
         <form className="reply" onSubmit={async (e) => {
           e.preventDefault();
@@ -138,8 +140,8 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
           if (ok) setReply('');
         }}>
           <input id={`reply-${thread.id}`} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="답글 달기" aria-label="답글" maxLength={5000} />
-          <button className="btn sm" disabled={busy}>보내기</button>
-          <button type="button" className="btn ghost sm ok-btn" onClick={() => onResolve?.(thread.id, true)}>해결</button>
+          <button className="btn primary sm with-ic" disabled={busy || !reply.trim()} aria-label="답글 보내기"><Icon name="send" />보내기</button>
+          <button type="button" className="act-btn ok" onClick={() => onResolve?.(thread.id, true)}><Icon name="check" />해결</button>
         </form>
       )}
     </div>
