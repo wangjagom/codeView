@@ -1,4 +1,4 @@
-/* 줄톡 — 왼쪽 팀 메뉴 / 가운데 리뷰 화면 / 오른쪽 이번 주 현황. 좁으면 메뉴는 상단 칩, 현황은 아래로. */
+/* codeView — 왼쪽 팀 메뉴 / 가운데 리뷰 화면 / 오른쪽 이번 주 현황. 좁으면 메뉴는 상단 칩, 현황은 아래로. */
 :root {
   --bg: #f7f8fa; --surface: #ffffff; --sunk: #f0f2f5; --line: #e2e5ea; --line-strong: #cdd2da;
   --fg: #161a21; --muted: #5a6270; --faint: #8a919d;

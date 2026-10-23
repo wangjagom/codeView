@@ -7,7 +7,7 @@ function Card({ children }: { children: ReactNode }) {
   return (
     <div className="auth">
       <div className="auth-card">
-        <div className="brand"><span className="mark">줄</span>줄톡</div>
+        <div className="brand"><span className="mark">cv</span>codeView</div>
         {children}
       </div>
     </div>

@@ -69,7 +69,7 @@ export default function App() {
     if (phase !== 'ready') return;
     let timer = 0;
     const bump = () => { window.clearTimeout(timer); timer = window.setTimeout(() => { refresh().catch(() => {}); setTick((t) => t + 1); }, 300); };
-    const ch = supabase.channel('jultalk-changes')
+    const ch = supabase.channel('codeview-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, bump)

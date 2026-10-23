@@ -23,7 +23,7 @@ export function Layout({ view, filter, task, onFilter, onTask, children }: {
   return (
     <div className="shell" data-view={view}>
       <aside className="nav">
-        <a className="brand" href={href({ name: 'feed' })}><span className="mark">줄</span>줄톡</a>
+        <a className="brand" href={href({ name: 'feed' })}><span className="mark">cv</span>codeView</a>
         <div className="team">
           <b>{TEAM_NAME}</b>
           <small>{profiles.length}명 참여 중</small>

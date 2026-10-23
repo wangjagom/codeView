@@ -1,4 +1,4 @@
-# 줄톡
+# codeView
 
 부트캠프 조원끼리 코드를 올리고 **줄 단위로 리뷰**하는 작은 코드 리뷰방이에요.
 
@@ -36,8 +36,8 @@ insert into public.team_members (email) values
 
 ### 4. 로그인 설정
 대시보드 → **Authentication → URL Configuration**
-- **Site URL**: 배포한 주소 (예: `https://jultalk.vercel.app`)
-- **Redirect URLs**: `http://localhost:5173/**` 와 배포 주소 `https://jultalk.vercel.app/**`
+- **Site URL**: 배포한 주소 (예: `https://codeview.vercel.app`)
+- **Redirect URLs**: `http://localhost:5173/**` 와 배포 주소 `https://codeview.vercel.app/**`
 
 로그인은 비밀번호 없이 이메일 링크로 해요. Supabase 기본 메일 발송은 시간당 보낼 수 있는 수가 적어서, 조원이 많아지면 **Authentication → SMTP Settings**에서 메일 서비스를 연결하는 걸 추천해요.
 

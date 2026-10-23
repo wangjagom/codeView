@@ -6,7 +6,7 @@ import { LANGS, TASKS } from '../lib/config';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 
-const DRAFT_KEY = 'jultalk:draft';
+const DRAFT_KEY = 'codeview:draft';
 
 interface Draft { title: string; file: string; lang: string; task: string; code: string; ask: string }
 
