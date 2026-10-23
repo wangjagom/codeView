@@ -9,7 +9,7 @@ export type Filter = 'all' | 'turn' | 'mine' | 'done';
 export function Layout({ view, filter, task, onFilter, onTask, children }: {
   view: string; filter: Filter; task: string; onFilter: (f: Filter) => void; onTask: (t: string) => void; children: ReactNode;
 }) {
-  const { me, team, posts, comments } = useStore();
+  const { me, team, posts, comments, isAnonymous } = useStore();
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments)).length;
   const items: { f: Filter; label: string; n: number; hot?: boolean }[] = [
     { f: 'all', label: '전체', n: posts.length },
@@ -39,7 +39,7 @@ export function Layout({ view, filter, task, onFilter, onTask, children }: {
             <button key={t} type="button" aria-pressed={task === t} onClick={() => { onTask(task === t ? '' : t); navigate({ name: 'feed' }); }}>{t}</button>
           ))}
         </div>
-        <a className="me-link" href={href({ name: 'me' })}><Avatar person={me} size="xs" />{me.name}<span className="me-hint">내 정보</span></a>
+        <a className="me-link" href={href({ name: 'me' })}><Avatar person={me} size="xs" />{me.name}<span className={`me-hint ${isAnonymous ? 'warn' : ''}`}>{isAnonymous ? '이메일 연결하기' : '내 정보'}</span></a>
       </aside>
       <main>{children}</main>
       <RightPanel />

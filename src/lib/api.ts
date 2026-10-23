@@ -130,7 +130,9 @@ export async function applySuggestion(commentId: string): Promise<Post> {
 
 /** 서버 에러 메시지를 사람이 읽을 수 있는 말로 바꿔요. */
 export function friendlyError(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
+  const msg = e instanceof Error ? e.message
+    : e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message)
+    : String(e);
   if (/code changed/.test(msg)) return '그 사이 코드가 바뀌어서 이 제안은 적용할 수 없어요.';
   if (/only the author/.test(msg)) return '수정 제안은 코드를 올린 사람만 적용할 수 있어요.';
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
@@ -138,6 +140,9 @@ export function friendlyError(e: unknown): string {
   if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
   if (/only owners/.test(msg)) return '조장만 할 수 있어요.';
   if (/row-level security|JSON object requested/.test(msg)) return '이 조에 속한 사람만 볼 수 있어요.';
+  if (/[Aa]nonymous sign-ins are disabled/.test(msg)) return '아직 이메일 없이 시작하기가 꺼져 있어요. Supabase에서 Allow anonymous sign-ins를 켜 주세요.';
+  if (/rate limit/i.test(msg)) return '요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요.';
+  if (/already been registered|already registered|email_exists/i.test(msg)) return '이미 다른 계정에서 쓰는 이메일이에요. 다른 이메일을 넣어 주세요.';
   if (/Failed to fetch|NetworkError/.test(msg)) return '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';
   return msg;
 }

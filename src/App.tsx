@@ -144,7 +144,7 @@ export default function App() {
     const team = teams.find((t) => t.id === teamId);
     if (phase !== 'ready' || !session || !me || !team) return null;
     const person = makePerson(profiles);
-    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
+    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, isAnonymous: Boolean(session.user.is_anonymous), email: session.user.email ?? '', team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
   }, [phase, session, me, teams, teamId, profiles, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
   const toastEl = <div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div>;

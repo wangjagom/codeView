@@ -5,6 +5,10 @@ export type MyTeam = Team & { role: Role };
 
 export interface Store {
   me: Profile;
+  /** 이메일 없이 시작한 계정인지. 이 브라우저에서만 유지돼요. */
+  isAnonymous: boolean;
+  /** 연결된 이메일 (없으면 빈 문자열) */
+  email: string;
   /** 지금 보고 있는 조 */
   team: MyTeam;
   /** 내가 속한 모든 조 */
