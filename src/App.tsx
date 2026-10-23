@@ -1,8 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layout, type Filter } from './components/Layout';
-import { friendlyError, getMyProfile, joinTeam, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
-import { isConfigured } from './lib/config';
+import { createProfile, friendlyError, getMyProfile, joinTeam, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
+import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
 import { StoreContext, lastTeam, makePerson, pendingCode, type MyTeam, type Store } from './lib/store';
 import { supabase } from './lib/supabase';
@@ -85,7 +85,13 @@ export default function App() {
     setSession(s);
     if (!s) { setPhase('signedOut'); return; }
     try {
-      const profile = await getMyProfile(s.user.id);
+      let profile = await getMyProfile(s.user.id);
+      // 이름으로 가입하면 이름·색이 계정 정보에 들어 있어서 프로필을 바로 만들어요.
+      const meta = s.user.user_metadata as { username?: string; color?: string } | undefined;
+      if (!profile && meta?.username) {
+        try { await createProfile(s.user.id, meta.username, meta.color ?? PALETTE[0]); } catch { /* 이미 만들어졌으면 아래에서 다시 읽어요 */ }
+        profile = await getMyProfile(s.user.id);
+      }
       if (!profile) { setPhase('onboarding'); return; }
       setMe(profile);
       const joined = await consumePending();
@@ -144,7 +150,7 @@ export default function App() {
     const team = teams.find((t) => t.id === teamId);
     if (phase !== 'ready' || !session || !me || !team) return null;
     const person = makePerson(profiles);
-    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, isAnonymous: Boolean(session.user.is_anonymous), email: session.user.email ?? '', team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
+    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
   }, [phase, session, me, teams, teamId, profiles, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
   const toastEl = <div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div>;
@@ -153,7 +159,7 @@ export default function App() {
   if (phase === 'loading') return <div className="auth"><p className="muted">불러오는 중…</p></div>;
   if (phase === 'signedOut') return <Login invited={route.name === 'join' || Boolean(pendingCode.get())} />;
   if (phase === 'error') return <AuthCard><h1>문제가 생겼어요</h1><p>{error}</p><button type="button" className="btn" onClick={() => location.reload()}>다시 시도</button></AuthCard>;
-  if (phase === 'onboarding' && session) return <Onboarding userId={session.user.id} email={session.user.email ?? ''} onDone={() => boot(session)} />;
+  if (phase === 'onboarding' && session) return <Onboarding userId={session.user.id} onDone={() => boot(session)} onSignOut={signOut} />;
   if (phase === 'noTeam' && session) {
     return (
       <>

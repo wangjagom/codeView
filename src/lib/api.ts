@@ -21,6 +21,21 @@ export async function updateProfile(id: string, patch: Partial<Pick<Profile, 'na
   must(await supabase.from('profiles').update(patch).eq('id', id));
 }
 
+export interface NotificationPrefs {
+  email: string;
+  on_review: boolean;
+  on_request: boolean;
+}
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs | null> {
+  const rows = must(await supabase.from('notification_prefs').select('email, on_review, on_request')) as { email: string | null; on_review: boolean; on_request: boolean }[];
+  return rows[0] ? { ...rows[0], email: rows[0].email ?? '' } : null;
+}
+
+export async function saveNotificationPrefs(userId: string, p: NotificationPrefs): Promise<void> {
+  must(await supabase.from('notification_prefs').upsert({ user_id: userId, email: p.email.trim() || null, on_review: p.on_review, on_request: p.on_request }));
+}
+
 /* ---------- 조 ---------- */
 
 export async function listMyTeams(userId: string): Promise<(Team & { role: Role })[]> {
@@ -140,9 +155,15 @@ export function friendlyError(e: unknown): string {
   if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
   if (/only owners/.test(msg)) return '조장만 할 수 있어요.';
   if (/row-level security|JSON object requested/.test(msg)) return '이 조에 속한 사람만 볼 수 있어요.';
-  if (/[Aa]nonymous sign-ins are disabled/.test(msg)) return '아직 이메일 없이 시작하기가 꺼져 있어요. Supabase에서 Allow anonymous sign-ins를 켜 주세요.';
   if (/rate limit/i.test(msg)) return '요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요.';
-  if (/already been registered|already registered|email_exists/i.test(msg)) return '이미 다른 계정에서 쓰는 이메일이에요. 다른 이메일을 넣어 주세요.';
+  if (/User already registered|profiles_name_unique|duplicate key.*profiles/i.test(msg)) return '이미 있는 이름이에요. 다른 이름을 정해 주세요.';
+  if (/Invalid login credentials/i.test(msg)) return '이름이나 비밀번호가 맞지 않아요.';
+  if (/Password should be at least/i.test(msg)) return '비밀번호가 너무 짧아요. 6자 이상으로 정해 주세요.';
+  if (/weak.?password|Password should contain/i.test(msg)) return '비밀번호가 너무 쉬워요. 영문·숫자를 섞어 더 길게 정해 주세요.';
+  if (/Signups not allowed|signup.*disabled/i.test(msg)) return 'Supabase에서 가입이 꺼져 있어요. Authentication 설정에서 가입을 허용해 주세요.';
+  if (/Email logins are disabled|Email provider is disabled|email_provider_disabled/i.test(msg)) return 'Supabase에서 Email 로그인 방식이 꺼져 있어요. 켜 주세요. (README 참고)';
+  if (/Email not confirmed/i.test(msg)) return 'Supabase에서 Confirm email을 꺼 주세요. (README 참고)';
+  if (/profiles_name_format/.test(msg)) return '이름은 한글, 영문, 숫자와 _ . - 로 2~20자만 쓸 수 있어요.';
   if (/Invalid path specified/.test(msg)) return 'Supabase 주소 설정이 잘못됐어요. VITE_SUPABASE_URL에 https://<프로젝트>.supabase.co 만 넣어 주세요.';
   if (/Invalid API key|No API key/i.test(msg)) return 'Supabase 키 설정이 잘못됐어요. VITE_SUPABASE_ANON_KEY에 anon(public) 키를 넣어 주세요.';
   if (/Failed to fetch|NetworkError/.test(msg)) return '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';

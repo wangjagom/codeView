@@ -1,74 +1,95 @@
-import { useState } from 'react';
-import { friendlyError, updateProfile } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { friendlyError, getNotificationPrefs, saveNotificationPrefs, updateProfile, type NotificationPrefs } from '../lib/api';
+import { MIN_PASSWORD } from '../lib/auth';
 import { href } from '../lib/router';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
 
 export function Me() {
-  const { me, isAnonymous, email, refresh, toast, signOut } = useStore();
-  const [name, setName] = useState(me.name);
+  const { me, refresh, toast, signOut } = useStore();
   const [color, setColor] = useState(me.color);
-  const [newEmail, setNewEmail] = useState('');
-  const [sentTo, setSentTo] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
+  const [notifyOn, setNotifyOn] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
 
-  // 익명 계정에 이메일을 붙이면 같은 계정 그대로 다른 기기에서도 로그인할 수 있어요.
-  const linkEmail = async () => {
-    const v = newEmail.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(v)) { toast('이메일 주소를 확인해 주세요'); return; }
-    setBusy(true);
-    const { error } = await supabase.auth.updateUser({ email: v }, { emailRedirectTo: location.origin + location.pathname });
-    setBusy(false);
-    if (error) toast(friendlyError(error)); else setSentTo(v);
+  useEffect(() => {
+    getNotificationPrefs()
+      .then((p) => { setPrefs(p ?? { email: '', on_review: true, on_request: true }); setNotifyOn(Boolean(p?.email)); })
+      .catch(() => setPrefs({ email: '', on_review: true, on_request: true }));
+  }, []);
+
+  const savePrefs = async () => {
+    if (!prefs) return;
+    const email = notifyOn ? prefs.email.trim() : '';
+    if (notifyOn && !/^\S+@\S+\.\S+$/.test(email)) { toast('알림 받을 이메일을 확인해 주세요'); document.getElementById('notifyEmail')?.focus(); return; }
+    try { await saveNotificationPrefs(me.id, { ...prefs, email }); toast(email ? '알림 설정을 저장했어요' : '이메일 알림을 껐어요'); }
+    catch (e) { toast(friendlyError(e)); }
+  };
+
+  const changePassword = async () => {
+    if (pw.length < MIN_PASSWORD) { toast(`비밀번호는 ${MIN_PASSWORD}자 이상이에요`); return; }
+    if (pw !== pw2) { toast('비밀번호 확인이 달라요'); return; }
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    if (error) toast(friendlyError(error)); else { setPw(''); setPw2(''); toast('비밀번호를 바꿨어요'); }
   };
 
   return (
     <section>
       <a className="back" href={href({ name: 'feed' })}>← 목록으로</a>
-      <div className="head"><div><h1>내 정보</h1><p>조원들에게 보이는 이름과 색을 바꿀 수 있어요.</p></div></div>
+      <div className="head"><div><h1>내 정보</h1><p>로그인 이름 <b>{me.name}</b> · 이름은 바꿀 수 없어요.</p></div></div>
       <div className="settings narrow-col">
-        <form className="form" onSubmit={async (e) => {
+        <form className="panel" onSubmit={async (e) => {
           e.preventDefault();
-          try { await updateProfile(me.id, { name: name.trim() || me.name, color }); await refresh(); toast('저장했어요'); }
-          catch (x) { toast(friendlyError(x)); }
+          try { await updateProfile(me.id, { color }); await refresh(); toast('색을 바꿨어요'); } catch (x) { toast(friendlyError(x)); }
         }}>
-          <div className="field"><label htmlFor="meName">이름</label><input id="meName" value={name} maxLength={20} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="field"><span className="lbl">색</span><ColorPicker value={color} onChange={setColor} name={name} /></div>
-          <div className="form-foot"><button className="btn primary">저장</button></div>
+          <h2>아바타 색</h2>
+          <div className="panel-body">
+            <ColorPicker value={color} onChange={setColor} name={me.name} />
+            <div className="form-foot"><button className="btn primary" disabled={color === me.color}>저장</button></div>
+          </div>
         </form>
 
-        <div className="panel">
-          <h2>로그인 방법</h2>
+        <form className="panel" onSubmit={(e) => { e.preventDefault(); savePrefs(); }}>
+          <h2>알림 받기 <span>선택</span></h2>
           <div className="panel-body">
-            {!isAnonymous ? (
-              <p className="small">이메일 <b>{email}</b>로 로그인하고 있어요. 다른 기기에서도 같은 이메일로 로그인하면 돼요.</p>
-            ) : sentTo ? (
-              <p className="small"><b>{sentTo}</b>로 확인 메일을 보냈어요. 메일의 링크를 누르면 연결이 끝나고, 그다음부터는 이 이메일로 어디서든 로그인할 수 있어요.</p>
-            ) : (
-              <form className="auth-form" onSubmit={(e) => { e.preventDefault(); linkEmail(); }}>
-                <p className="warn-box">지금은 <b>이메일 없이</b> 쓰고 있어요. 이 브라우저의 기록을 지우거나 다른 기기에서 열면 이 계정으로 다시 들어올 수 없어요. 이메일을 연결해 두면 안전해요.</p>
-                <label htmlFor="linkEmail" className="lbl">연결할 이메일</label>
-                <input id="linkEmail" type="email" autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="me@example.com" />
-                <div className="form-foot"><button className="btn primary" disabled={busy}>{busy ? '보내는 중…' : '확인 메일 받기'}</button></div>
-              </form>
+            {!prefs ? <p className="muted small">불러오는 중…</p> : (
+              <>
+                <label className="check-row"><input type="checkbox" checked={notifyOn} onChange={(e) => setNotifyOn(e.target.checked)} /> 이메일로 알림 받기</label>
+                {notifyOn && (
+                  <>
+                    <div className="field"><label htmlFor="notifyEmail">알림 받을 이메일</label>
+                      <input id="notifyEmail" type="email" autoComplete="email" value={prefs.email} placeholder="me@example.com" onChange={(e) => setPrefs({ ...prefs, email: e.target.value })} /></div>
+                    <label className="check-row"><input type="checkbox" checked={prefs.on_review} onChange={(e) => setPrefs({ ...prefs, on_review: e.target.checked })} /> 내 코드에 리뷰가 달리면</label>
+                    <label className="check-row"><input type="checkbox" checked={prefs.on_request} onChange={(e) => setPrefs({ ...prefs, on_request: e.target.checked })} /> 누가 나에게 리뷰를 부탁하면</label>
+                  </>
+                )}
+                <p className="muted small">이메일은 알림에만 쓰고 로그인에는 쓰지 않아요. 본인만 볼 수 있어요. 메일 발송 기능은 준비 중이라, 지금은 설정만 저장돼요.</p>
+                <div className="form-foot"><button className="btn primary">저장</button></div>
+              </>
             )}
           </div>
-        </div>
+        </form>
+
+        <form className="panel" onSubmit={(e) => { e.preventDefault(); changePassword(); }}>
+          <h2>비밀번호 바꾸기</h2>
+          <div className="panel-body">
+            <input type="text" autoComplete="username" value={me.name} readOnly hidden />
+            <div className="field"><label htmlFor="newPw">새 비밀번호</label><input id="newPw" type="password" autoComplete="new-password" value={pw} placeholder={`${MIN_PASSWORD}자 이상`} onChange={(e) => setPw(e.target.value)} /></div>
+            <div className="field"><label htmlFor="newPw2">새 비밀번호 확인</label><input id="newPw2" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></div>
+            <p className="muted small">비밀번호를 잊으면 되찾을 방법이 없어요. 잊어버렸다면 조장에게 말해서 새 이름으로 다시 들어오면 돼요.</p>
+            <div className="form-foot"><button className="btn" disabled={!pw}>비밀번호 바꾸기</button></div>
+          </div>
+        </form>
 
         <div className="panel">
           <h2>로그아웃</h2>
           <div className="panel-body">
             {confirmOut ? (
-              <div className="danger">
-                <span>{isAnonymous ? '이메일이 연결되지 않아서, 로그아웃하면 이 계정으로 다시 들어올 수 없어요. 그래도 로그아웃할까요?' : '로그아웃할까요?'}</span>
-                <button type="button" className="btn sm" onClick={() => setConfirmOut(false)}>취소</button>
-                <button type="button" className="btn sm danger-btn" onClick={signOut}>로그아웃</button>
-              </div>
-            ) : (
-              <div className="danger"><button type="button" className="btn ghost sm" onClick={() => setConfirmOut(true)}>로그아웃</button></div>
-            )}
+              <div className="danger"><span>로그아웃할까요? 이름과 비밀번호로 다시 들어올 수 있어요.</span><button type="button" className="btn sm" onClick={() => setConfirmOut(false)}>취소</button><button type="button" className="btn sm danger-btn" onClick={signOut}>로그아웃</button></div>
+            ) : <div className="danger"><button type="button" className="btn ghost sm" onClick={() => setConfirmOut(true)}>로그아웃</button></div>}
           </div>
         </div>
       </div>
