@@ -162,6 +162,7 @@ export function friendlyError(e: unknown): string {
   if (/weak.?password|Password should contain/i.test(msg)) return '비밀번호가 너무 쉬워요. 영문·숫자를 섞어 더 길게 정해 주세요.';
   if (/Signups not allowed|signup.*disabled/i.test(msg)) return 'Supabase에서 가입이 꺼져 있어요. Authentication 설정에서 가입을 허용해 주세요.';
   if (/Email logins are disabled|Email provider is disabled|email_provider_disabled/i.test(msg)) return 'Supabase에서 Email 로그인 방식이 꺼져 있어요. 켜 주세요. (README 참고)';
+  if (/Email address .* is invalid|email_address_invalid/i.test(msg)) return 'Supabase에서 가입 확인 메일을 보내려고 해서 막혔어요. Authentication → Sign In / Providers → Email 에서 Confirm email을 꺼 주세요.';
   if (/Email not confirmed/i.test(msg)) return 'Supabase에서 Confirm email을 꺼 주세요. (README 참고)';
   if (/profiles_name_format/.test(msg)) return '이름은 한글, 영문, 숫자와 _ . - 로 2~20자만 쓸 수 있어요.';
   if (/Invalid path specified/.test(msg)) return 'Supabase 주소 설정이 잘못됐어요. VITE_SUPABASE_URL에 https://<프로젝트>.supabase.co 만 넣어 주세요.';
