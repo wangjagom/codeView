@@ -3,6 +3,7 @@
 부트캠프 조원끼리 코드를 올리고 **줄 단위로 리뷰**하는 작은 코드 리뷰방이에요.
 
 - 코드를 붙여넣으면 흔한 실수(괄호 짝, `onClick={fn()}`, `var`, `==`, index key, 기다리지 않은 `fetch` 등)를 먼저 짚어 줘요.
+- 앱 안에서 **조를 만들고 초대 링크·코드로 조원을 불러요.** 한 사람이 여러 조에 들어갈 수 있고, 조가 바뀌면 새 조를 만들어 옮기면 돼요.
 - 조원을 리뷰어로 지정하면 그 사람의 **내 리뷰 차례**에 올라가요.
 - 줄마다 리뷰를 달고, 고친 코드를 **수정 제안**으로 남길 수 있어요. 글쓴이가 "제안 적용"을 누르면 새 버전(v2, v3…)이 기록돼요.
 - 조원이 리뷰를 남기면 열린 화면이 실시간으로 갱신돼요.
@@ -18,21 +19,20 @@
 [supabase.com](https://supabase.com)에서 새 프로젝트를 만들어요. 무료 플랜으로 충분해요.
 
 ### 2. 데이터베이스 만들기
-대시보드 → **SQL Editor** → New query에 [`supabase/migrations/20261023000000_init.sql`](supabase/migrations/20261023000000_init.sql) 내용을 통째로 붙여넣고 **Run**.
+대시보드 → **SQL Editor** → New query에서 `supabase/migrations` 폴더의 파일을 **이름 순서대로** 하나씩 붙여넣고 **Run** 해요.
 
-Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로도 돼요.
+1. [`20261023000000_init.sql`](supabase/migrations/20261023000000_init.sql) — 기본 테이블
+2. [`20261023010000_teams.sql`](supabase/migrations/20261023010000_teams.sql) — 조 만들기·초대 코드
 
-### 3. 조원 이메일 등록
-팀 명단(`team_members`)에 있는 이메일만 데이터를 볼 수 있어요. SQL Editor에서:
+Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 
-```sql
-insert into public.team_members (email) values
-  ('me@example.com'),
-  ('friend1@example.com'),
-  ('friend2@example.com');
-```
+### 3. 조 만들고 초대하기 (앱 안에서)
+SQL로 명단을 관리할 필요가 없어요.
 
-이메일은 **소문자**로 넣어 주세요. 나중에 조원이 늘면 같은 방법으로 추가하면 돼요.
+1. 앱에 처음 로그인하면 **새 조 만들기** 또는 **초대 코드로 참여하기**가 나와요.
+2. 조를 만든 사람이 조장이 되고, **조 설정 · 초대하기**에서 초대 링크를 복사해 조원들에게 보내요.
+3. 링크를 받은 사람은 로그인만 하면 바로 그 조에 들어와요. 링크가 밖으로 퍼졌으면 **새 초대 코드 만들기**로 이전 링크를 막아요.
+4. 조장은 조 이름·과제 목록을 바꾸고, 조원을 조장으로 지정하거나 내보낼 수 있어요.
 
 ### 4. 로그인 설정
 대시보드 → **Authentication → URL Configuration**
@@ -45,17 +45,21 @@ insert into public.team_members (email) values
 
 ```bash
 cp .env.example .env
-# .env에 Project Settings → API의 Project URL과 anon(public) 키를 넣어요
+# .env에 Project URL과 anon(public) 키를 넣어요 (아래 '키 찾는 곳' 참고)
 npm install
 npm run dev
 ```
 
-> anon 키는 브라우저에 노출돼도 되는 공개 키예요. 데이터는 RLS 정책과 팀 명단으로 보호돼요.
+**키 찾는 곳**: Supabase 대시보드에서 프로젝트를 열고 왼쪽 아래 **Project Settings → API**(화면에 따라 **Data API** 또는 **API Keys**)
+- `VITE_SUPABASE_URL` = **Project URL** (`https://<project-ref>.supabase.co`)
+- `VITE_SUPABASE_ANON_KEY` = **Project API keys**의 **`anon` `public`** 키 (새 키 체계라면 **Publishable key** `sb_publishable_...`)
+
+> anon 키는 브라우저에 노출돼도 되는 공개 키예요. 데이터는 RLS 정책으로 보호돼서 같은 조원만 볼 수 있어요.
 > **service_role 키는 절대 `.env`나 코드에 넣지 마세요.**
 
 ### 6. 배포 (Vercel 예시)
 1. Vercel에서 이 저장소를 Import → Framework는 **Vite**로 자동 인식돼요.
-2. Environment Variables에 `.env`의 `VITE_` 값들을 그대로 넣어요.
+2. Environment Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 넣어요.
 3. 배포 주소를 4번의 Site URL / Redirect URLs에 추가해요.
 
 Netlify, Cloudflare Pages도 같은 방법으로 돼요(빌드 명령 `npm run build`, 출력 폴더 `dist`).
@@ -108,8 +112,11 @@ supabase/migrations/  테이블, RLS 정책, 수정 제안 적용 함수
 ### 권한 요약
 | 하는 일 | 누가 |
 |---|---|
-| 글·리뷰 보기 | 팀 명단에 있는 사람 |
-| 코드 올리기, 리뷰·답글 달기 | 팀 명단에 있는 사람 (본인 이름으로만) |
+| 글·리뷰·조원 보기 | 같은 조원 |
+| 코드 올리기, 리뷰·답글 달기, 대화 해결 | 같은 조원 (본인 이름으로만) |
 | 상태 바꾸기, 글 삭제 | 글쓴이 |
 | 수정 제안 적용 | 글쓴이 (`apply_suggestion` 함수로만, 코드 직접 수정은 막혀 있어요) |
-| 대화 해결/다시 열기 | 팀 명단에 있는 사람 |
+| 조 만들기 | 로그인한 누구나 (만든 사람이 조장) |
+| 조 참여 | 초대 코드를 아는 사람 (`join_team`) |
+| 조 이름·과제 바꾸기, 초대 코드 새로 만들기, 조원 내보내기, 조 삭제 | 조장 |
+| 조 나가기 | 본인 (마지막 조장은 다른 조원을 조장으로 지정한 뒤) |

@@ -1,17 +1,16 @@
 import { supabase } from './supabase';
-import type { Comment, CommentLite, Post, Profile, Status, Suggestion, Thread, Version } from './types';
+import type { Comment, CommentLite, Member, Post, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
 
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
   return res.data as T;
 }
 
-export async function isMember(): Promise<boolean> {
-  return must(await supabase.rpc('is_member')) as boolean;
-}
+/* ---------- 프로필 ---------- */
 
-export async function listProfiles(): Promise<Profile[]> {
-  return must(await supabase.from('profiles').select('id, name, color').order('created_at'));
+export async function getMyProfile(userId: string): Promise<Profile | null> {
+  const rows = must(await supabase.from('profiles').select('id, name, color').eq('id', userId)) as Profile[];
+  return rows[0] ?? null;
 }
 
 export async function createProfile(id: string, name: string, color: string): Promise<void> {
@@ -22,12 +21,55 @@ export async function updateProfile(id: string, patch: Partial<Pick<Profile, 'na
   must(await supabase.from('profiles').update(patch).eq('id', id));
 }
 
-export async function listPosts(): Promise<Post[]> {
-  return must(await supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(200));
+/* ---------- 조 ---------- */
+
+export async function listMyTeams(userId: string): Promise<(Team & { role: Role })[]> {
+  const rows = must(await supabase.from('team_memberships').select('role, teams(*)').eq('user_id', userId)) as unknown as { role: Role; teams: Team | null }[];
+  return rows.filter((r) => r.teams).map((r) => ({ ...(r.teams as Team), role: r.role })).sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
-export async function listCommentsLite(): Promise<CommentLite[]> {
-  return must(await supabase.from('comments').select('post_id, author_id, created_at').order('created_at', { ascending: false }).limit(2000));
+export async function listMembers(teamId: string): Promise<Member[]> {
+  const rows = must(await supabase.from('team_memberships').select('role, joined_at, profiles(id, name, color)').eq('team_id', teamId).order('joined_at')) as unknown as { role: Role; joined_at: string; profiles: Profile | null }[];
+  return rows.filter((r) => r.profiles).map((r) => ({ ...(r.profiles as Profile), role: r.role, joined_at: r.joined_at }));
+}
+
+export async function createTeam(name: string, tasks: string[]): Promise<Team> {
+  return must(await supabase.rpc('create_team', { p_name: name, p_tasks: tasks })) as Team;
+}
+
+export async function joinTeam(code: string): Promise<Team> {
+  return must(await supabase.rpc('join_team', { p_code: code })) as Team;
+}
+
+export async function regenerateInvite(teamId: string): Promise<string> {
+  return must(await supabase.rpc('regenerate_invite', { p_team: teamId })) as string;
+}
+
+export async function updateTeam(teamId: string, patch: Partial<Pick<Team, 'name' | 'tasks'>>): Promise<void> {
+  must(await supabase.from('teams').update(patch).eq('id', teamId));
+}
+
+export async function setRole(teamId: string, userId: string, role: Role): Promise<void> {
+  must(await supabase.from('team_memberships').update({ role }).eq('team_id', teamId).eq('user_id', userId));
+}
+
+export async function removeMember(teamId: string, userId: string): Promise<void> {
+  must(await supabase.from('team_memberships').delete().eq('team_id', teamId).eq('user_id', userId));
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  must(await supabase.from('teams').delete().eq('id', teamId));
+}
+
+/* ---------- 글 ---------- */
+
+export async function listPosts(teamId: string): Promise<Post[]> {
+  return must(await supabase.from('posts').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(200));
+}
+
+export async function listCommentsLite(postIds: string[]): Promise<CommentLite[]> {
+  if (!postIds.length) return [];
+  return must(await supabase.from('comments').select('post_id, author_id, created_at').in('post_id', postIds).order('created_at', { ascending: false }).limit(2000));
 }
 
 export async function getPost(id: string): Promise<{ post: Post; threads: Thread[]; versions: Version[] }> {
@@ -46,6 +88,7 @@ export async function getPost(id: string): Promise<{ post: Post; threads: Thread
 }
 
 export interface NewPost {
+  team_id: string;
   title: string;
   file_name: string;
   lang: string;
@@ -91,7 +134,10 @@ export function friendlyError(e: unknown): string {
   if (/code changed/.test(msg)) return '그 사이 코드가 바뀌어서 이 제안은 적용할 수 없어요.';
   if (/only the author/.test(msg)) return '수정 제안은 코드를 올린 사람만 적용할 수 있어요.';
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
-  if (/not a team member|row-level security/.test(msg)) return '팀 명단에 없는 계정이에요. 조장에게 이메일 등록을 부탁해 주세요.';
+  if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 조장에게 새 코드를 받아 주세요.';
+  if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
+  if (/only owners/.test(msg)) return '조장만 할 수 있어요.';
+  if (/row-level security|JSON object requested/.test(msg)) return '이 조에 속한 사람만 볼 수 있어요.';
   if (/Failed to fetch|NetworkError/.test(msg)) return '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';
   return msg;
 }

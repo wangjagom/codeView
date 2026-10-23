@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { TASKS, TEAM_NAME } from '../lib/config';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { href, navigate } from '../lib/router';
 import { isMyTurn, useStore } from '../lib/store';
 import { weekStart } from '../lib/util';
@@ -10,7 +9,7 @@ export type Filter = 'all' | 'turn' | 'mine' | 'done';
 export function Layout({ view, filter, task, onFilter, onTask, children }: {
   view: string; filter: Filter; task: string; onFilter: (f: Filter) => void; onTask: (t: string) => void; children: ReactNode;
 }) {
-  const { me, profiles, posts, comments } = useStore();
+  const { me, team, posts, comments } = useStore();
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments)).length;
   const items: { f: Filter; label: string; n: number; hot?: boolean }[] = [
     { f: 'all', label: '전체', n: posts.length },
@@ -24,11 +23,7 @@ export function Layout({ view, filter, task, onFilter, onTask, children }: {
     <div className="shell" data-view={view}>
       <aside className="nav">
         <a className="brand" href={href({ name: 'feed' })}><span className="mark">cv</span>codeView</a>
-        <div className="team">
-          <b>{TEAM_NAME}</b>
-          <small>{profiles.length}명 참여 중</small>
-          <div className="faces">{profiles.slice(0, 8).map((p) => <Avatar key={p.id} person={p} size="xs" />)}</div>
-        </div>
+        <TeamSwitcher />
         <a className="btn primary wide" href={href({ name: 'new' })}>+ 코드 올리기</a>
         <nav className="menu" aria-label="보기">
           {items.map((it) => (
@@ -40,7 +35,7 @@ export function Layout({ view, filter, task, onFilter, onTask, children }: {
         </nav>
         <div className="menu-h">과제</div>
         <div className="tasks">
-          {TASKS.map((t) => (
+          {team.tasks.map((t) => (
             <button key={t} type="button" aria-pressed={task === t} onClick={() => { onTask(task === t ? '' : t); navigate({ name: 'feed' }); }}>{t}</button>
           ))}
         </div>
@@ -48,6 +43,42 @@ export function Layout({ view, filter, task, onFilter, onTask, children }: {
       </aside>
       <main>{children}</main>
       <RightPanel />
+    </div>
+  );
+}
+
+function TeamSwitcher() {
+  const { team, teams, profiles, switchTeam } = useStore();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close); document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [open]);
+
+  return (
+    <div className="team" ref={ref}>
+      <button type="button" className="team-btn" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
+        <span className="team-txt"><b>{team.name}</b><small>{profiles.length}명 · {team.role === 'owner' ? '조장' : '조원'}</small></span>
+        <span className="caret" aria-hidden="true">▾</span>
+      </button>
+      <div className="faces">{profiles.slice(0, 8).map((p) => <Avatar key={p.id} person={p} size="xs" />)}</div>
+      {open && (
+        <div className="team-menu" role="menu">
+          {teams.map((t) => (
+            <button key={t.id} type="button" role="menuitemradio" aria-checked={t.id === team.id} onClick={() => { setOpen(false); switchTeam(t.id); }}>
+              <span>{t.name}</span>{t.id === team.id && <span aria-hidden="true">✓</span>}
+            </button>
+          ))}
+          <hr />
+          <a role="menuitem" href={href({ name: 'team' })} onClick={() => setOpen(false)}>조 설정 · 초대하기</a>
+          <a role="menuitem" href={href({ name: 'teams' })} onClick={() => setOpen(false)}>다른 조 만들기 · 참여하기</a>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,8 +6,25 @@ export interface Profile {
   color: string;
 }
 
+export type Role = 'owner' | 'member';
+
+export interface Team {
+  id: string;
+  name: string;
+  tasks: string[];
+  invite_code: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface Member extends Profile {
+  role: Role;
+  joined_at: string;
+}
+
 export interface Post {
   id: string;
+  team_id: string;
   author_id: string;
   title: string;
   file_name: string;

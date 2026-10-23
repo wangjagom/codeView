@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { createPost, friendlyError } from '../lib/api';
 import { checkCode } from '../lib/checks';
-import { LANGS, TASKS } from '../lib/config';
+import { LANGS } from '../lib/config';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 
@@ -24,12 +24,12 @@ function guessLang(file: string): string | null {
 }
 
 export function NewPost() {
-  const { me, profiles, refresh, toast } = useStore();
+  const { me, team, profiles, refresh, toast } = useStore();
   const d = loadDraft();
   const [title, setTitle] = useState(d?.title ?? '');
   const [file, setFile] = useState(d?.file ?? '');
   const [lang, setLang] = useState(d?.lang ?? 'JavaScript');
-  const [task, setTask] = useState(d?.task ?? TASKS[0] ?? '자유 질문');
+  const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : team.tasks[0] ?? '자유 질문');
   const [code, setCode] = useState(d?.code ?? '');
   const [ask, setAsk] = useState(d?.ask ?? '');
   const [picked, setPicked] = useState<string[]>([]);
@@ -45,7 +45,7 @@ export function NewPost() {
     if (!code.trim()) { toast('코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
     setBusy(true);
     try {
-      const p = await createPost({ title: title.trim(), file_name: file.trim() || 'code.js', lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: picked });
+      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || 'code.js', lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: picked });
       saveDraft(null);
       await refresh();
       toast(picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰를 요청했어요` : '코드를 올렸어요');
@@ -65,7 +65,7 @@ export function NewPost() {
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder="예: 삭제 버튼을 누르면 다른 항목이 지워져요" onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
           <div className="field"><label htmlFor="nTask">과제</label>
-            <select id="nTask" value={task} onChange={(ev) => { setTask(ev.target.value); persist({ task: ev.target.value }); }}>{TASKS.map((t) => <option key={t}>{t}</option>)}</select></div>
+            <select id="nTask" value={task} onChange={(ev) => { setTask(ev.target.value); persist({ task: ev.target.value }); }}>{team.tasks.map((t) => <option key={t}>{t}</option>)}</select></div>
         </div>
         <div className="two">
           <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder="TodoList.jsx" onChange={(ev) => { const v = ev.target.value; setFile(v); const g = guessLang(v); if (g) setLang(g); persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>
@@ -95,7 +95,7 @@ export function NewPost() {
               <button key={p.id} type="button" className="pick" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>
                 <Avatar person={p} size="xs" />{p.name}
               </button>
-            )) : <span className="muted">아직 다른 조원이 가입하지 않았어요.</span>}
+            )) : <span className="muted">아직 다른 조원이 없어요. <a href={href({ name: 'team' })}>초대 링크</a>를 보내 보세요.</span>}
           </div>
         </div>
         <div className="form-foot">

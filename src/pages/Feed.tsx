@@ -10,7 +10,7 @@ import { timeAgo } from '../lib/util';
 const TITLES: Record<Filter, string> = { all: '전체 리뷰', turn: '내 리뷰 차례', mine: '내가 올린 코드', done: '해결됨' };
 
 export function Feed({ filter, task }: { filter: Filter; task: string }) {
-  const { me, posts, comments, person } = useStore();
+  const { me, team, posts, comments, person, profiles } = useStore();
   const [status, setStatus] = useState<Status | ''>('');
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments));
 
@@ -21,7 +21,7 @@ export function Feed({ filter, task }: { filter: Filter; task: string }) {
   return (
     <section>
       <div className="head">
-        <div><h1>{TITLES[filter]}{task ? ` · ${task}` : ''}</h1><p>조원들이 올린 코드와 피드백이 모여요.</p></div>
+        <div><h1>{TITLES[filter]}{task ? ` · ${task}` : ''}</h1><p>{team.name}에서 올린 코드와 피드백이 모여요.</p></div>
       </div>
       {turns.length > 0 && filter !== 'turn' && (
         <div className="turn">
@@ -38,7 +38,7 @@ export function Feed({ filter, task }: { filter: Filter; task: string }) {
       </div>
       <div className="feed">
         {list.length ? list.map((p) => <PostCard key={p.id} post={p} turn={isMyTurn(p, me.id, comments)} />)
-          : <div className="empty">{posts.length ? '여기에 해당하는 코드가 없어요.' : <>아직 올라온 코드가 없어요. <a href={href({ name: 'new' })}>첫 코드를 올려 보세요</a>.</>}</div>}
+          : <div className="empty">{posts.length ? '여기에 해당하는 코드가 없어요.' : <>아직 올라온 코드가 없어요. <a href={href({ name: 'new' })}>첫 코드를 올려 보세요</a>.{profiles.length < 2 && <> 조원들에게 <a href={href({ name: 'team' })}>초대 링크</a>도 보내 보세요.</>}</>}</div>}
       </div>
     </section>
   );

@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { createProfile, friendlyError } from '../lib/api';
-import { PALETTE, TEAM_NAME } from '../lib/config';
+import { PALETTE } from '../lib/config';
 import { supabase } from '../lib/supabase';
 
-function Card({ children }: { children: ReactNode }) {
+export function AuthCard({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="auth">
-      <div className="auth-card">
+      <div className={`auth-card ${wide ? 'wide' : ''}`}>
         <div className="brand"><span className="mark">cv</span>codeView</div>
         {children}
       </div>
@@ -14,7 +14,7 @@ function Card({ children }: { children: ReactNode }) {
   );
 }
 
-export function Login() {
+export function Login({ invited }: { invited?: boolean }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,8 +30,8 @@ export function Login() {
   };
 
   return (
-    <Card>
-      <h1>{TEAM_NAME}</h1>
+    <AuthCard>
+      <h1>{invited ? '조에 초대받았어요' : '조원끼리 코드 리뷰하는 곳'}</h1>
       {sent ? (
         <>
           <p><b>{email}</b>로 로그인 링크를 보냈어요. 메일함에서 링크를 누르면 바로 들어와요.</p>
@@ -40,25 +40,14 @@ export function Login() {
         </>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); send(); }} className="auth-form">
-          <p>조장에게 등록한 이메일로 로그인해요. 비밀번호 없이 메일로 링크를 보내 드려요.</p>
+          <p>{invited ? '로그인하면 바로 초대받은 조에 들어가요. ' : ''}비밀번호 없이 이메일로 로그인 링크를 보내 드려요.</p>
           <label htmlFor="email" className="lbl">이메일</label>
           <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="me@example.com" />
           {err && <p className="err">{err}</p>}
           <button className="btn primary wide" disabled={busy}>{busy ? '보내는 중…' : '로그인 링크 받기'}</button>
         </form>
       )}
-    </Card>
-  );
-}
-
-export function NotMember({ email, onSignOut }: { email: string; onSignOut: () => void }) {
-  return (
-    <Card>
-      <h1>팀 명단에 없는 계정이에요</h1>
-      <p><b>{email}</b>은 아직 {TEAM_NAME} 명단에 없어요. 조장에게 이 이메일을 등록해 달라고 말해 주세요.</p>
-      <p className="muted small">등록되면 이 화면을 새로고침하면 돼요.</p>
-      <div className="row-btns"><button type="button" className="btn" onClick={() => location.reload()}>새로고침</button><button type="button" className="btn ghost" onClick={onSignOut}>로그아웃</button></div>
-    </Card>
+    </AuthCard>
   );
 }
 
@@ -68,7 +57,7 @@ export function Onboarding({ userId, email, onDone }: { userId: string; email: s
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   return (
-    <Card>
+    <AuthCard>
       <h1>조원들에게 보일 이름을 정해요</h1>
       <form className="auth-form" onSubmit={async (e) => {
         e.preventDefault();
@@ -83,7 +72,7 @@ export function Onboarding({ userId, email, onDone }: { userId: string; email: s
         {err && <p className="err">{err}</p>}
         <button className="btn primary wide" disabled={busy}>시작하기</button>
       </form>
-    </Card>
+    </AuthCard>
   );
 }
 
