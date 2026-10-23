@@ -2,7 +2,13 @@
 
 부트캠프 조원끼리 코드를 올리고 **줄 단위로 리뷰**하는 작은 코드 리뷰방이에요.
 
-- 코드를 붙여넣으면 흔한 실수(괄호 짝, `onClick={fn()}`, `var`, `==`, index key, 기다리지 않은 `fetch` 등)를 먼저 짚어 줘요.
+- SAP 과정에서 쓰는 언어만 올려요: **ABAP · CDS View · SQLScript(AMDP) · UI5 XML View · JavaScript(UI5) · HTML · CSS · JSON(manifest)**. 파일 이름이나 붙여넣은 코드를 보고 언어를 자동으로 골라요.
+- 언어별로 흔한 실수를 먼저 짚어 줘요.
+  - ABAP: 마침표(.) 빠짐, IF/ENDIF·LOOP/ENDLOOP 짝, `SELECT *`, LOOP 안 SELECT, `WITH HEADER LINE`·`OCCURS`·`MOVE`·`TABLES` 같은 옛 문법
+  - CDS: `define view` → `define view entity`, 권한 체크 어노테이션, 괄호 짝
+  - UI5 XML View·HTML: 닫히지 않은 태그, 루트의 `xmlns="sap.m"`
+  - JavaScript: `var`, `==`, 남은 `console.log`, `jQuery.sap.*`, `sap.ui.getCore().byId`
+  - JSON: 마지막 쉼표, 작은따옴표, 주석
 - **겹치지 않는 이름 + 비밀번호로 가입·로그인**해요. 이메일은 필요 없고, 알림을 받고 싶을 때만 내 정보에서 넣어요(선택).
 - 앱 안에서 **조를 만들고 초대 링크·코드로 조원을 불러요.** 한 사람이 여러 조에 들어갈 수 있고, 조가 바뀌면 새 조를 만들어 옮기면 돼요.
 - 조원을 리뷰어로 지정하면 그 사람의 **내 리뷰 차례**에 올라가요.

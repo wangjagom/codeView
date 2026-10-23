@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { createPost, friendlyError } from '../lib/api';
 import { checkCode } from '../lib/checks';
-import { LANGS } from '../lib/config';
+import { LANGS, langFromCode, langFromFile } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 
@@ -17,18 +17,14 @@ function saveDraft(d: Draft | null) {
   try { if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch { /* 저장 못 해도 괜찮아요 */ }
 }
 
-function guessLang(file: string): string | null {
-  const ext = file.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = { js: 'JavaScript', mjs: 'JavaScript', ts: 'TypeScript', jsx: 'JSX', tsx: 'TSX', css: 'CSS', html: 'HTML', py: 'Python', java: 'Java', sql: 'SQL' };
-  return ext ? map[ext] ?? null : null;
-}
-
 export function NewPost() {
   const { me, team, profiles, refresh, toast } = useStore();
   const d = loadDraft();
   const [title, setTitle] = useState(d?.title ?? '');
   const [file, setFile] = useState(d?.file ?? '');
-  const [lang, setLang] = useState(d?.lang ?? 'JavaScript');
+  const [lang, setLang] = useState(d?.lang && LANGS.some((l) => l.id === d.lang) ? d.lang : 'ABAP');
+  // 언어를 직접 고르기 전까지는 파일 이름이나 코드를 보고 자동으로 골라요.
+  const [langAuto, setLangAuto] = useState(!d?.lang);
   const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : team.tasks[0] ?? '자유 질문');
   const [code, setCode] = useState(d?.code ?? '');
   const [ask, setAsk] = useState(d?.ask ?? '');
@@ -45,7 +41,7 @@ export function NewPost() {
     if (!code.trim()) { toast('코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
     setBusy(true);
     try {
-      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || 'code.js', lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: picked });
+      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || (LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt'), lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: picked });
       saveDraft(null);
       await refresh();
       toast(picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰를 요청했어요` : '코드를 올렸어요');
@@ -68,15 +64,16 @@ export function NewPost() {
             <select id="nTask" value={task} onChange={(ev) => { setTask(ev.target.value); persist({ task: ev.target.value }); }}>{team.tasks.map((t) => <option key={t}>{t}</option>)}</select></div>
         </div>
         <div className="two">
-          <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder="TodoList.jsx" onChange={(ev) => { const v = ev.target.value; setFile(v); const g = guessLang(v); if (g) setLang(g); persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>
+          <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder={LANGS.find((l) => l.id === lang)?.sample ?? "zr_report.prog.abap"} onChange={(ev) => { const v = ev.target.value; setFile(v); const g = langFromFile(v); if (g) { setLang(g); setLangAuto(false); } persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>
           <div className="field"><label htmlFor="nLang">언어</label>
-            <select id="nLang" value={lang} onChange={(ev) => { setLang(ev.target.value); persist({ lang: ev.target.value }); }}>{LANGS.map((l) => <option key={l}>{l}</option>)}</select></div>
+            <select id="nLang" value={lang} onChange={(ev) => { setLang(ev.target.value); setLangAuto(false); persist({ lang: ev.target.value }); }}>{LANGS.map((l) => <option key={l.id} value={l.id}>{l.label} · {l.course}</option>)}</select>
+            {langAuto && code.trim() && <span className="muted small">붙여넣은 코드를 보고 골랐어요</span>}</div>
         </div>
         <div className="field">
           <label htmlFor="nCode">코드</label>
           <div className="paste">
             <textarea id="nCode" spellCheck={false} value={code} placeholder="여기에 코드를 붙여넣어요" maxLength={50000}
-              onChange={(ev) => { setCode(ev.target.value); persist({ code: ev.target.value }); }}
+              onChange={(ev) => { const v = ev.target.value; setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }}
               onKeyDown={(ev) => { if (ev.key === 'Tab' && !ev.shiftKey) { ev.preventDefault(); const t = ev.currentTarget; t.setRangeText('  ', t.selectionStart, t.selectionEnd, 'end'); setCode(t.value); } }} />
             <div className="check" aria-live="polite">
               {!code.trim() ? <span className="muted">코드를 붙여넣으면 바로 검사해요</span>

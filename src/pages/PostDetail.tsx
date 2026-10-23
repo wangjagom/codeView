@@ -3,7 +3,7 @@ import { Avatar, StatusPill } from '../components/Avatar';
 import { CodeView } from '../components/CodeView';
 import { addLineComment, applySuggestion, deletePost, friendlyError, getPost, setResolved, setStatus } from '../lib/api';
 import { checkCode } from '../lib/checks';
-import { FENCE } from '../lib/config';
+import { fenceOf, langLabel } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import { STATUS_LABEL, type Post, type Status, type Suggestion, type Thread, type Version } from '../lib/types';
@@ -50,7 +50,7 @@ export function PostDetail({ id }: { id: string }) {
   const copyDiscord = async () => {
     const link = location.href.split('#')[0] + href({ name: 'post', id: post.id });
     const summary = `${e || w ? `오류 ${e} · 경고 ${w} · ` : ''}리뷰 ${reviewCount}`;
-    const text = `**${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${FENCE[post.lang] ?? ''}\n${shownCode}\n\`\`\`\n${summary}\n${link}`;
+    const text = `**${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${fenceOf(post.lang)}\n${shownCode}\n\`\`\`\n${summary}\n${link}`;
     toast((await copyText(text)) ? '디스코드에 붙여넣을 내용을 복사했어요' : '복사가 막혀 있어요');
   };
 
@@ -61,7 +61,7 @@ export function PostDetail({ id }: { id: string }) {
         <div className="d-row"><h1>{post.title}</h1><StatusPill status={post.status} /></div>
         <div className="d-by">
           <Avatar person={author} size="xs" /><b>{author.name}</b><span>{timeAgo(post.created_at)}</span>
-          <span className="file">{post.file_name}</span><span>{post.lang}</span><span className="pill task">{post.task}</span>
+          <span className="file">{post.file_name}</span><span>{langLabel(post.lang)}</span><span className="pill task">{post.task}</span>
         </div>
         {post.ask && <div className="ask"><Avatar person={author} /><div><b>받고 싶은 피드백</b><span className="body">{post.ask}</span></div></div>}
       </div>

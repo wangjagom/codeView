@@ -16,7 +16,7 @@ export function parseTasks(text: string): string[] {
 /** 조 만들기 + 초대 코드로 참여하기. 첫 화면과 '#/teams' 화면에서 같이 써요. */
 export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, joined: boolean) => void; initialError?: string }) {
   const [name, setName] = useState('');
-  const [tasks, setTasks] = useState('4주차 · Todo 앱, 3주차 · 쇼핑몰, 자유 질문');
+  const [tasks, setTasks] = useState('1. UI 프로그래밍, 2. Back-End (ABAP), 3. Clean Core Back-End, 4. Clean Core UI, 5. 프로젝트, 자유 질문');
   const [code, setCode] = useState('');
   const [err, setErr] = useState(initialError);
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
