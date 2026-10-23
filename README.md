@@ -57,7 +57,13 @@ npm run dev
 > anon 키는 브라우저에 노출돼도 되는 공개 키예요. 데이터는 RLS 정책으로 보호돼서 같은 조원만 볼 수 있어요.
 > **service_role 키는 절대 `.env`나 코드에 넣지 마세요.**
 
-### 6. 배포 (Vercel 예시)
+### 6. 배포 (GitHub Pages)
+1. 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 바꿔요.
+2. **Settings → Secrets and variables → Actions**에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 넣어요 (Variables, Secrets 어느 쪽이든 돼요).
+3. `main`에 푸시하면 `Deploy to GitHub Pages` 워크플로가 빌드해서 `https://<계정>.github.io/codeView/`에 올려요. Actions 탭에서 직접 다시 돌릴 수도 있어요.
+4. 이 주소를 Supabase **Authentication → URL Configuration**의 Site URL과 Redirect URLs(`https://<계정>.github.io/codeView/**`)에 넣어요.
+
+### 다른 곳에 배포하기 (Vercel 예시)
 1. Vercel에서 이 저장소를 Import → Framework는 **Vite**로 자동 인식돼요.
 2. Environment Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 넣어요.
 3. 배포 주소를 4번의 Site URL / Redirect URLs에 추가해요.
