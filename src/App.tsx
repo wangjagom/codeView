@@ -167,13 +167,15 @@ export default function App() {
   return (
     <StoreContext.Provider value={store}>
       <Layout view={route.name} sheet={sheet} onSheet={setSheet}>
-        {joinError && <div className="notice" role="alert">{joinError}<button type="button" className="btn ghost sm" onClick={() => setJoinError('')}>닫기</button></div>}
-        {(route.name === 'feed' || route.name === 'join') && <Feed filter={filter} task={task} onFilter={setFilter} onTask={setTask} onTeam={() => setSheet(true)} />}
-        {route.name === 'new' && <NewPost />}
-        {route.name === 'post' && <PostDetail id={route.id} />}
-        {route.name === 'me' && <Me onTeam={() => setSheet(true)} />}
-        {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
-        {route.name === 'teams' && <TeamsPage />}
+        <div className="page" key={route.name === 'post' ? `post-${route.id}` : route.name === 'join' ? 'feed' : route.name}>
+          {joinError && <div className="notice" role="alert">{joinError}<button type="button" className="btn ghost sm" onClick={() => setJoinError('')}>닫기</button></div>}
+          {(route.name === 'feed' || route.name === 'join') && <Feed filter={filter} task={task} onFilter={setFilter} onTask={setTask} onTeam={() => setSheet(true)} />}
+          {route.name === 'new' && <NewPost />}
+          {route.name === 'post' && <PostDetail id={route.id} />}
+          {route.name === 'me' && <Me onTeam={() => setSheet(true)} />}
+          {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
+          {route.name === 'teams' && <TeamsPage />}
+        </div>
       </Layout>
       {toastEl}
     </StoreContext.Provider>

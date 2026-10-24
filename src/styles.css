@@ -37,6 +37,27 @@ input, select, textarea { font: inherit; color: var(--fg); }
 code, pre, textarea, .rows, .diff, .ed-gutter { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 code { font-family: var(--mono); font-size: .88em; background: var(--fill); border-radius: 5px; padding: 1px 5px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+/* ───── 움직임: 짧고 가볍게 (움직임 줄이기 설정이면 모두 꺼져요) ───── */
+@keyframes cv-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes cv-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-pop-in { from { opacity: 0; transform: translateY(-3px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes cv-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes cv-check { 0% { transform: scale(.4); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.page { animation: cv-fade .2s ease-out both; }
+.card.list > .item, .turn-item { animation: cv-rise .26s ease-out both; }
+.card.list > .item:nth-child(2), .turn-item:nth-child(3) { animation-delay: .03s; }
+.card.list > .item:nth-child(3), .turn-item:nth-child(4) { animation-delay: .06s; }
+.card.list > .item:nth-child(4) { animation-delay: .09s; }
+.card.list > .item:nth-child(5) { animation-delay: .12s; }
+.card.list > .item:nth-child(n+6) { animation-delay: .15s; }
+.composer, .cm-edit, .cm-del, .cm, .card.stack, .preview, .sugg-edit, .peek, .check ul, .err, .notice, .danger, .pf, .ed-tpl, .no-review { animation: cv-rise .2s ease-out both; }
+.sheet-bg { animation: cv-fade .18s ease-out both; }
+.sheet { animation: cv-sheet .26s cubic-bezier(.2, .8, .2, 1) both; }
+.sg, .hov { animation: cv-pop-in .12s ease-out both; }
+.act-btn.done .ic { animation: cv-check .32s ease-out both; }
+.btn, .act-btn, .chip, .pick, .seg button, .txt-btn, .ed-act, .ed-chip, .item, .row, .gut button, .tabbar a { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, opacity .15s ease, transform .1s ease; }
+.btn:active:not(:disabled), .act-btn:active:not(:disabled), .chip:active, .pick:active, .ed-chip:active, .ed-act:active { transform: scale(.97); }
+.editor, input, textarea, select { transition: border-color .15s ease, box-shadow .15s ease; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 .muted { color: var(--faint); }
 .small { font-size: 13px; }
