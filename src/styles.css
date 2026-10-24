@@ -79,13 +79,22 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 .task-similar { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--sub); }
 .task-similar b { font-weight: 600; color: var(--fg); }
 .new-task { display: grid; gap: 8px; padding-top: 8px; }
+/* 파일 언어 아이콘 (LangIcon). 종이·테두리 색은 자리마다 --fi-paper, --fi-line으로 바꿔요. */
+.fi { flex: none; display: inline-block; vertical-align: -3px; }
+.fi .fi-paper { fill: var(--fi-paper, #ffffff); stroke: var(--fi-line, #aab2bd); }
+.fi .fi-fold { stroke: var(--fi-line, #aab2bd); }
+@media (prefers-color-scheme: dark) { :root { --fi-paper: #2a2d33; --fi-line: #7b838e; } }
+.ftab.on { --fi-paper: #2e3239; --fi-line: #8a929d; }
+@media (prefers-color-scheme: dark) { .ftab.on { --fi-paper: #ffffff; --fi-line: #8a929d; } }
 /* 파일 탭 (한 글에 여러 파일) */
+.m-file { display: inline; white-space: nowrap; }
+.m-file .fi { vertical-align: -2px; margin-right: 4px; }
 .file-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; }
 .file-tabs::-webkit-scrollbar { display: none; }
 .ftab { flex: none; display: inline-flex; align-items: center; height: 34px; border-radius: 9px; background: var(--fill); color: var(--sub); font: 500 13px var(--mono); }
 .ftab.on { background: var(--fg); color: var(--surface); }
 .ftab.confirm { background: var(--red-soft); color: var(--red); }
-.ftab-name { display: inline-flex; align-items: center; gap: 6px; height: 100%; border: 0; background: none; color: inherit; font: inherit; padding: 0 12px; cursor: pointer; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.ftab-name { display: inline-flex; align-items: center; gap: 6px; height: 100%; border: 0; background: none; color: inherit; font: inherit; padding: 0 12px 0 9px; cursor: pointer; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
 .ftab-x { border: 0; background: none; color: inherit; opacity: .6; height: 100%; padding: 0 10px 0 2px; font: 600 13px var(--font); cursor: pointer; }
 .ftab-x:hover { opacity: 1; }
 .ftab.add { border: 1px dashed var(--line); background: transparent; color: var(--accent); padding: 0 12px; font: 600 13px var(--font); cursor: pointer; }
@@ -392,7 +401,7 @@ a.item:hover, button.item:hover { background: var(--fill); }
 
 .code { background: var(--surface); border-radius: var(--r); overflow: hidden; min-width: 0; }
 .code-h { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; flex-wrap: wrap; }
-.code-h .file { font-family: var(--mono); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.code-h .file { font-family: var(--mono); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; display: inline-flex; align-items: center; gap: 7px; }
 .code-h .txt-btn { white-space: nowrap; padding: 4px; }
 .code-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 12px; }
 .code-tools .act-btn { flex: 1 1 auto; }

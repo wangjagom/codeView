@@ -16,6 +16,7 @@ import { RichText } from '../components/RichText';
 import { MoreMenu } from '../components/MoreMenu';
 import { copyText } from '../lib/util';
 import { download, makeZip, safeName } from '../lib/zip';
+import { LangIcon } from '../components/LangIcon';
 
 export function PostDetail({ id }: { id: string }) {
   const { me, person, tick, refresh, toast } = useStore();
@@ -122,7 +123,7 @@ export function PostDetail({ id }: { id: string }) {
                 return (
                   <span key={f.name} className={`ftab ${i === fi ? 'on' : ''}`}>
                     <button type="button" role="tab" aria-selected={i === fi} className="ftab-name" onClick={() => setFileIdx(i)}>
-                      {f.name}
+                      <LangIcon lang={f.lang} size={16} />{f.name}
                       {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
                       {n > 0 && <span className="ftab-n" aria-label={`리뷰 ${n}개`}>{n}</span>}
                     </button>
@@ -132,7 +133,7 @@ export function PostDetail({ id }: { id: string }) {
             </div>
           )}
           <div className="code-h">
-            <span className="file">{curFile.name}</span><span className="muted small">{langLabel(curFile.lang)}{shownFiles.length > 1 ? ` · ${fi + 1}/${shownFiles.length}` : ''}</span>
+            <span className="file"><LangIcon lang={curFile.lang} size={20} />{curFile.name}</span><span className="muted small">{langLabel(curFile.lang)}{shownFiles.length > 1 ? ` · ${fi + 1}/${shownFiles.length}` : ''}</span>
             {e > 0 && <span className="pill e">오류 {e}</span>}
             {w > 0 && <span className="pill w">경고 {w}</span>}
             {!e && !w && <span className="pill ok">검사 통과</span>}

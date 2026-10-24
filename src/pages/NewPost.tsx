@@ -11,6 +11,7 @@ import { Dots, Expand, useFlip } from '../components/Motion';
 import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
 import { TEMPLATE_SETS, templateSetFiles } from '../lib/templates';
 import type { PostKind } from '../lib/types';
+import { LangIcon } from '../components/LangIcon';
 
 const DRAFT_KEY = 'codeview:draft';
 const NEW_TASK = '__new_task__';
@@ -177,7 +178,7 @@ export function NewPost() {
               return (
                 <span key={f.id} data-flip={f.id} className={`ftab ${i === active ? 'on' : ''} ${confirmRemove === f.id ? 'confirm' : ''}`}>
                   <button type="button" role="tab" aria-selected={i === active} className="ftab-name" onClick={() => { setActive(i); setConfirmRemove(null); }}>
-                    {f.name.trim() || `파일 ${i + 1}`}
+                    <LangIcon lang={f.lang} size={16} />{f.name.trim() || `파일 ${i + 1}`}
                     {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
                   </button>
                   {files.length > 1 && <button type="button" className="ftab-x" aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? '빼기?' : '×'}</button>}
