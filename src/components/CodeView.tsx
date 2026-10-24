@@ -1,10 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Problem } from '../lib/checks';
 import { highlight, highlightWithMark } from '../lib/highlight';
+import { fenceOf, langLabel } from '../lib/langs';
 import type { Profile, Suggestion, Thread } from '../lib/types';
 import { timeAgo } from '../lib/util';
-import { Avatar, RichText } from './Avatar';
+import { Avatar } from './Avatar';
+import { RichText } from './RichText';
 import { Icon } from './Icon';
+
+const langFence = (id: string) => (id === 'CDS' ? 'cds' : id === 'SQLScript' ? 'sql' : fenceOf(id));
 
 interface Props {
   code: string;
@@ -70,12 +74,12 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                   </div>
                 )}
                 {ts.map((t) => (
-                  <ThreadBox key={t.id} thread={t} lines={lines} person={person} isAuthor={isAuthor} readOnly={readOnly}
+                  <ThreadBox key={t.id} thread={t} lines={lines} lang={lang} person={person} isAuthor={isAuthor} readOnly={readOnly}
                     onReply={(body) => onComment?.(t.line, body, null, t.id) ?? Promise.resolve(false)}
                     onResolve={onResolve} onApply={onApply} />
                 ))}
                 {composer === ln && onComment && (
-                  <Composer line={ln} lines={lines} onCancel={() => setComposer(null)}
+                  <Composer line={ln} lines={lines} lang={lang} onCancel={() => setComposer(null)}
                     onSubmit={async (body, s) => { const ok = await onComment(ln, body, s, ts.find((t) => !t.resolved)?.id); if (ok) setComposer(null); return ok; }} />
                 )}
               </div>
@@ -92,8 +96,8 @@ function suggestionState(s: Suggestion, lines: string[]): 'ok' | 'stale' {
   return 'ok';
 }
 
-function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResolve, onApply }: {
-  thread: Thread; lines: string[]; person: (id: string) => Profile; isAuthor: boolean; readOnly?: boolean;
+function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, onResolve, onApply }: {
+  thread: Thread; lines: string[]; lang: string; person: (id: string) => Profile; isAuthor: boolean; readOnly?: boolean;
   onReply: (body: string) => Promise<boolean>; onResolve?: (id: string, r: boolean) => void; onApply?: (id: string) => void;
 }) {
   const [reply, setReply] = useState('');
@@ -109,7 +113,7 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
             <Avatar person={who} />
             <div style={{ minWidth: 0 }}>
               <div className="cm-h"><b>{who.name}</b><time dateTime={c.created_at}>{timeAgo(c.created_at)}</time></div>
-              <p className="body"><RichText text={c.body} /></p>
+              <div className="cm-text"><RichText text={c.body} lang={lang} /></div>
               {s && (
                 <div className="sugg">
                   <div className="sugg-h">
@@ -121,8 +125,8 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
                       : <span>글쓴이가 적용할 수 있어요</span>}
                   </div>
                   <div className="diff">
-                    {s.original.map((t, i) => <div className="d" key={'d' + i}>{t || ' '}</div>)}
-                    {s.to.map((t, i) => <div className="a" key={'a' + i}>{t || ' '}</div>)}
+                    {s.original.map((t, i) => <div className="d" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
+                    {s.to.map((t, i) => <div className="a" key={'a' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
                   </div>
                 </div>
               )}
@@ -139,17 +143,20 @@ function ThreadBox({ thread, lines, person, isAuthor, readOnly, onReply, onResol
           setBusy(true); const ok = await onReply(v); setBusy(false);
           if (ok) setReply('');
         }}>
-          <input id={`reply-${thread.id}`} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="답글 달기" aria-label="답글" maxLength={5000} />
+          <textarea id={`reply-${thread.id}`} rows={Math.min(8, Math.max(1, reply.split('\n').length))} value={reply} onChange={(e) => setReply(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
+            placeholder="답글 달기" aria-label="답글" maxLength={5000} />
           <button className="btn primary sm with-ic" disabled={busy || !reply.trim()} aria-label="답글 보내기"><Icon name="send" />보내기</button>
           <button type="button" className="act-btn ok" onClick={() => onResolve?.(thread.id, true)}><Icon name="check" />해결</button>
+          {/`/.test(reply) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={reply} lang={lang} /></div>}
         </form>
       )}
     </div>
   );
 }
 
-function Composer({ line, lines, onCancel, onSubmit }: {
-  line: number; lines: string[]; onCancel: () => void; onSubmit: (body: string, s: Suggestion | null) => Promise<boolean>;
+function Composer({ line, lines, lang, onCancel, onSubmit }: {
+  line: number; lines: string[]; lang: string; onCancel: () => void; onSubmit: (body: string, s: Suggestion | null) => Promise<boolean>;
 }) {
   const [body, setBody] = useState('');
   const [suggest, setSuggest] = useState(false);
@@ -158,6 +165,19 @@ function Composer({ line, lines, onCancel, onSubmit }: {
   const original = lines.slice(line - 1, line - 1 + count);
   const [to, setTo] = useState(original.join('\n'));
   const [busy, setBusy] = useState(false);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  /** 고른 부분을 `코드` 또는 ```블록```으로 감싸요. 고른 게 없으면 이 줄 코드를 넣어요. */
+  const wrap = (block: boolean) => {
+    const t = areaRef.current; if (!t) return;
+    const a = t.selectionStart, b = t.selectionEnd;
+    const sel = body.slice(a, b) || (block ? lines[line - 1] ?? '' : lines[line - 1]?.trim() ?? '');
+    const fence = langFence(lang);
+    const ins = block ? `${a > 0 && body[a - 1] !== '\n' ? '\n' : ''}\`\`\`${fence}\n${sel}\n\`\`\`\n` : `\`${sel}\``;
+    const next = body.slice(0, a) + ins + body.slice(b);
+    setBody(next);
+    requestAnimationFrame(() => { t.focus(); const pos = a + ins.length; t.setSelectionRange(pos, pos); });
+  };
 
   const changeCount = (n: number) => { setCount(n); setTo(lines.slice(line - 1, line - 1 + n).join('\n')); };
   const submit = async () => {
@@ -168,9 +188,15 @@ function Composer({ line, lines, onCancel, onSubmit }: {
 
   return (
     <form className="composer" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <textarea id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
-        placeholder={`${line}번째 줄에 대한 리뷰를 남겨 주세요. 코드는 \`백틱\`으로 감싸요.`}
+      <div className="fmt-bar" role="group" aria-label="코드 넣기">
+        <button type="button" className="act-btn sm" onClick={() => wrap(false)}><code>`</code>한 줄 코드</button>
+        <button type="button" className="act-btn sm" onClick={() => wrap(true)}><code>```</code>코드 블록</button>
+        <span className="hint">고른 글자를 감싸요 · 색은 {langLabel(lang)} 기준</span>
+      </div>
+      <textarea ref={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
+        placeholder={`${line}번째 줄에 대한 리뷰를 남겨 주세요.\n코드는 \`백틱\`, 여러 줄은 \`\`\`로 감싸면 색이 들어가요.`}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }} />
+      {/`/.test(body) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={body} lang={lang} /></div>}
       <label className="sugg-toggle"><input type="checkbox" checked={suggest} onChange={(e) => setSuggest(e.target.checked)} /> 고친 코드도 제안하기</label>
       {suggest && (
         <div className="sugg-edit">
