@@ -3,3 +3,7 @@ dist
 .env
 .env.local
 *.log
+*.tsbuildinfo
+# tsc가 만든 산출물 (소스는 .ts/.tsx만)
+src/**/*.js
+vite.config.js

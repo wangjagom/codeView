@@ -265,10 +265,27 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .my-tabs { margin: 0 0 10px; background: var(--fill-2); }
 .my-tabs .chip-n { opacity: .6; }
 .list-bar { display: flex; align-items: center; gap: 6px; margin: 14px 4px 10px; }
-.list-bar > span { flex: 1; min-width: 0; }
-.mini-sel { appearance: none; border: 0; border-radius: 8px; background-color: var(--surface); padding: 6px 26px 6px 10px; font-size: 13px; font-weight: 600; color: var(--sub); max-width: 46%; text-overflow: ellipsis;
-  background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%); background-position: calc(100% - 13px) 55%, calc(100% - 9px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
-.mini-sel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.list-bar > .lb-n { flex: 1; min-width: 0; }
+/* 과제·정렬 선택 메뉴 (버튼 바로 아래) */
+.pk { position: relative; flex: none; min-width: 0; }
+.pk-task { flex: 0 1 auto; max-width: 52%; }
+.pk-btn { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 30px; padding: 0 8px 0 10px; border: 0; border-radius: 8px; background: var(--surface); color: var(--sub); font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.pk-btn:hover { background: var(--fill-2); }
+.pk-btn[aria-expanded="true"] { background: var(--fg); color: var(--surface); }
+.pk-btn .ic { width: 13px; height: 13px; flex: none; opacity: .7; transition: transform .15s ease; }
+.pk-btn[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.pk-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 25; width: max-content; min-width: 200px; max-width: min(300px, calc(100vw - 32px)); max-height: min(360px, 60vh); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border-radius: 14px; background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .16), 0 0 0 1px var(--line); display: grid; gap: 2px; transform-origin: top right; animation: cv-pop-in .14s ease-out both; }
+.pk-h { padding: 6px 12px 4px; font-size: 12px; font-weight: 700; color: var(--faint); }
+.pk-pop button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; padding: 10px 10px 10px 12px; border-radius: 10px; color: var(--fg); font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; }
+.pk-pop button:hover, .pk-pop button:focus-visible { background: var(--fill); outline: none; }
+.pk-pop button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.pk-l { flex: 1; min-width: 0; display: grid; }
+.pk-l, .pk-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-hint { font-size: 12px; font-weight: 500; color: var(--faint); }
+.pk-n { flex: none; font-size: 13px; font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+.pk-ck { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.pk-ck .ic { width: 18px; height: 18px; }
 .turn-item { display: flex; align-items: center; gap: 12px; background: var(--fill); border-radius: 12px; padding: 12px 14px; color: var(--fg); text-decoration: none; }
 .turn-item .body { flex: 1; min-width: 0; display: grid; }
 .turn-item .t { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -11,6 +11,7 @@ import { isMyTurn, useStore } from '../lib/store';
 import { STATUS_LABEL, filesOf, isShare, type Post } from '../lib/types';
 import { timeAgo } from '../lib/util';
 import { LangIcon } from '../components/LangIcon';
+import { Picker } from '../components/Picker';
 
 const KINDS: [Kind, string][] = [['all', '전체'], ['review', '리뷰 요청'], ['share', '코드 공유']];
 const STATUSES: [StatusFilter, string][] = [['all', '전체'], ['wait', '대기'], ['doing', '피드백 중'], ['done', '해결됨']];
@@ -29,6 +30,7 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments));
 
   const searching = query.trim().length > 0;
+  const taskBase = posts.filter((p) => (!searching || hits.has(p.id)) && matchFilter(p, filter, ctx));
   const inTask = posts.filter((p) => (!task || p.task === task) && (!searching || hits.has(p.id)));
   const list = inTask.filter((p) => matchFilter(p, filter, ctx));
   if (sort === 'liked') list.sort((a, b) => (likeCount.get(b.id) ?? 0) - (likeCount.get(a.id) ?? 0) || b.created_at.localeCompare(a.created_at));
@@ -87,17 +89,13 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
       )}
 
       <div className="list-bar">
-        <span className="muted small">{searching ? `'${query.trim()}' 검색 ` : unit}{list.length}개</span>
+        <span className="lb-n muted small">{searching ? `'${query.trim()}' 검색 ` : unit}{list.length}개</span>
         {team.tasks.length > 0 && (
-          <select className="mini-sel" value={task} onChange={(e) => onTask(e.target.value)} aria-label="과제">
-            <option value="">과제 전체</option>
-            {team.tasks.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Picker label="과제" title="과제" className="pk-task" value={task} onChange={onTask}
+            options={[{ value: '', label: '과제 전체', count: taskBase.length }, ...team.tasks.map((t) => ({ value: t, label: t, count: taskBase.filter((p) => p.task === t).length }))]} />
         )}
-        <select className="mini-sel" value={sort} onChange={(e) => setSort(e.target.value as 'new' | 'liked')} aria-label="정렬">
-          <option value="new">최신순</option>
-          <option value="liked">도움순</option>
-        </select>
+        <Picker label="정렬" value={sort} onChange={setSort}
+          options={[{ value: 'new', label: '최신순', hint: '새로 올라온 글부터' }, { value: 'liked', label: '도움순', hint: '도움됐어요가 많은 글부터' }]} />
       </div>
 
       <div className="card list" ref={listRef}>
