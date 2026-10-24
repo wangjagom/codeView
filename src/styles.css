@@ -357,6 +357,24 @@ button.num:hover { color: var(--accent); text-decoration: underline; }
 .diff div { padding: 2px 10px; white-space: pre-wrap; word-break: break-word; }
 .diff .d { background: var(--del); color: var(--del-fg); } .diff .d::before { content: "− "; }
 .diff .a { background: var(--add); color: var(--add-fg); } .diff .a::before { content: "+ "; }
+
+/* 코드는 라이트 모드에서도 VS Code Dark Modern으로 보여요 (리뷰 속 코드 블록과 같게). */
+.rows.dm { background: var(--ed-bg); color: var(--ed-fg); }
+.rows.dm .row:hover { background: #2a2d2e; }
+.rows.dm .row:target { background: rgba(38, 79, 120, .55); }
+.rows.dm .row.e { background: rgba(241, 76, 76, .13); }
+.rows.dm .row.w { background: rgba(204, 167, 0, .12); }
+.rows.dm .num { color: var(--ed-ln); }
+.rows.dm button.num:hover { color: #cccccc; }
+.rows.dm .row.e .num { color: var(--ed-err); } .rows.dm .row.w .num { color: var(--ed-warn); }
+.rows.dm .gut button { background: #0078d4; color: #ffffff; }
+.rows.dm .gut button.cnt { background: rgba(0, 120, 212, .25); color: #4daafc; }
+.rows.dm .inl { color: var(--fg); }
+.rows.dm ::selection { background: rgba(38, 79, 120, .9); }
+.diff.dm { background: var(--ed-bg); color: var(--ed-fg); }
+.diff.dm .d { background: rgba(241, 76, 76, .16); color: var(--ed-fg); } .diff.dm .d::before { color: #f14c4c; }
+.diff.dm .a { background: rgba(35, 134, 54, .22); color: var(--ed-fg); } .diff.dm .a::before { color: #3fb950; }
+.sugg-edit textarea { background: #1f1f1f; color: #cccccc; caret-color: #aeafad; box-shadow: inset 3px 0 0 #3fb950; }
 .cm-text { margin-top: 2px; white-space: normal; }
 .cm-inline { white-space: pre-wrap; }
 .ic-code.dm { background: var(--ed-bg); color: var(--ed-fg); font: 12.5px/1.6 var(--mono); padding: 2px 6px; border-radius: 6px; margin: 0 1px; white-space: pre-wrap; word-break: break-word; box-shadow: inset 0 0 0 1px var(--ed-line); }

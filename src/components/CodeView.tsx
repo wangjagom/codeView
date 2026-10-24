@@ -39,7 +39,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
   }, [threads, lines.length]);
 
   return (
-    <div className="rows" data-lang={lang} data-code-all="row">
+    <div className="rows dm" data-lang={lang} data-code-all="row">
       {lines.map((text, i) => {
         const ln = i + 1;
         const prob = problems.find((p) => p.line === ln);
@@ -125,7 +125,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
                       : isAuthor && !readOnly ? <button type="button" className="btn primary sm with-ic" onClick={() => onApply?.(c.id)}><Icon name="check" />제안 적용</button>
                       : <span>작성자만 적용 가능</span>}
                   </div>
-                  <div className="diff" data-lang={lang} data-code-all="diff">
+                  <div className="diff dm" data-lang={lang} data-code-all="diff">
                     {s.original.map((t, i) => <div className="d" data-code="diff" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
                     {s.to.map((t, i) => <div className="a" data-code="diff" key={'a' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
                   </div>
