@@ -128,3 +128,8 @@ export function highlightWithMark(line: string, match: string, sev: 'e' | 'w', l
   if (i < 0) return highlight(line, lang);
   return highlight(line.slice(0, i), lang) + `<span class="sq-${sev}">${highlight(match, lang)}</span>` + highlight(line.slice(i + match.length), lang);
 }
+
+/** 자동완성에 쓸 언어별 키워드 목록 */
+export function keywordsFor(lang: string): string[] {
+  return [...(GRAMMARS[lang]?.keywords ?? [])];
+}
