@@ -83,7 +83,8 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
   );
 }
 
-function PostItem({ post, hit, likes, saved }: { post: Post; hit?: SearchHit; likes: number; saved: boolean }) {
+/** 코드 목록 한 줄 (홈, 내 정보의 저장한 코드에서 써요) */
+export function PostItem({ post, hit, likes, saved }: { post: Post; hit?: SearchHit; likes: number; saved: boolean }) {
   const { comments, person } = useStore();
   const files = filesOf(post);
   const probs = files.flatMap((f) => checkCode(f.code, f.lang));

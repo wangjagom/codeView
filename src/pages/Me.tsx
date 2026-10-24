@@ -7,6 +7,7 @@ import { MIN_PASSWORD } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
+import { PostItem } from './Feed';
 import { ProfileFields } from '../components/ProfileFields';
 import { Dots, Expand, Loading } from '../components/Motion';
 
@@ -14,7 +15,7 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
   return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
 }
 
-export function Me({ onTeam }: { onTeam: () => void }) {
+export function Me({ onTeam, onShowSaved }: { onTeam: () => void; onShowSaved: () => void }) {
   const { me, refresh, toast, signOut } = useStore();
   const [color, setColor] = useState(me.color);
   const [avatar, setAvatar] = useState<string | null>(me.avatar ?? null);
@@ -87,6 +88,8 @@ export function Me({ onTeam }: { onTeam: () => void }) {
         </div>
       </Expand>
 
+      <SavedPosts onShowAll={onShowSaved} />
+
       <div className="sec-h"><h2>알림</h2><span className="muted small">선택</span></div>
       <div className="card list">
         {!prefs ? <div className="item"><Loading className="muted small" /></div> : (
@@ -129,3 +132,23 @@ export function Me({ onTeam }: { onTeam: () => void }) {
     </section>
   );
 }
+
+/** 내가 🔖 저장한 코드 (최근 5개, 더 있으면 홈의 저장 칩으로) */
+function SavedPosts({ onShowAll }: { onShowAll: () => void }) {
+  const { posts, likes, bookmarks } = useStore();
+  const saved = posts.filter((p) => bookmarks.has(p.id));
+  const shown = saved.slice(0, 5);
+  return (
+    <>
+      <div className="sec-h"><h2>저장한 코드 {saved.length > 0 && <span className="muted">{saved.length}</span>}</h2>
+        {saved.length > shown.length && <button type="button" onClick={onShowAll}>모두 보기<Icon name="chev" /></button>}
+      </div>
+      <div className="card list">
+        {shown.length ? shown.map((p) => <PostItem key={p.id} post={p} likes={likes.filter((l) => l.post_id === p.id).length} saved />) : (
+          <div className="empty small-empty"><Icon name="bookmark" className="empty-ic" />저장한 코드가 없어요<br /><span className="muted small">글 상세에서 '저장'을 누르면 여기 모여요</span></div>
+        )}
+      </div>
+    </>
+  );
+}
+

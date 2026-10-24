@@ -157,7 +157,7 @@ export default function App() {
     const on = !bookmarks.has(postId);
     const flip = (add: boolean) => setBookmarks((b) => { const n = new Set(b); if (add) n.add(postId); else n.delete(postId); return n; });
     flip(on);
-    toast(on ? '저장했어요 · 홈의 저장 칩에서 다시 볼 수 있어요' : '저장을 뺐어요');
+    toast(on ? '저장했어요 · 내 정보에서 모아 볼 수 있어요' : '저장을 뺐어요');
     setBookmark(postId, on, session.user.id).catch((e) => { flip(!on); toast(friendlyError(e)); });
   }, [session, bookmarks, toast]);
 
@@ -200,7 +200,7 @@ export default function App() {
           {route.name === 'new' && <NewPost />}
           {route.name === 'post' && <PostDetail id={route.id} />}
           {route.name === 'edit' && <EditPost id={route.id} />}
-          {route.name === 'me' && <Me onTeam={() => setSheet(true)} />}
+          {route.name === 'me' && <Me onTeam={() => setSheet(true)} onShowSaved={() => { setFilter('saved'); setTask(''); navigate({ name: 'feed' }); }} />}
           {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
           {route.name === 'teams' && <TeamsPage />}
         </div>
