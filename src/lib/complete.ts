@@ -141,6 +141,7 @@ const JS_MEMBERS = plain('fn', [
   'addStyleClass', 'removeStyleClass', 'destroy', 'read', 'create', 'update', 'remove', 'submitChanges', 'extend', 'show',
   'push', 'pop', 'map', 'forEach', 'find', 'findIndex', 'includes', 'indexOf', 'join', 'slice', 'splice', 'sort', 'reduce', 'some', 'every',
   'length', 'trim', 'split', 'replace', 'toUpperCase', 'toLowerCase', 'startsWith', 'endsWith', 'toFixed', 'then', 'catch',
+  'json', 'text', 'status', 'ok', 'headers', 'message', 'stack',
   'attachInit', 'placeAt', 'addContent', 'addItem', 'addPage', 'getCore', 'byId',
   'log', 'error', 'warn', 'stringify', 'parse', 'keys', 'values', 'entries', 'assign', 'querySelector', 'addEventListener',
 ]);
@@ -336,14 +337,14 @@ const VOID = new Set(['img', 'input', 'br', 'meta', 'link', 'hr', 'source', 'are
  * 커서 자리에서 보여 줄 자동완성 목록. 보여 줄 게 없으면 null.
  * force는 Ctrl+Space처럼 직접 열 때예요 (아무것도 안 쳤어도 목록을 보여 줘요).
  */
-export function suggest(text: string, pos: number, lang: string, force = false, file = ''): Suggestion | null {
+export function suggest(text: string, pos: number, lang: string, force = false, file = '', templates = true): Suggestion | null {
   const before = text.slice(0, pos);
   const line = before.slice(before.lastIndexOf('\n') + 1);
   if (/[\w$-]/.test(text[pos] ?? '') && !force) return null; // 낱말 가운데에서는 띄우지 않아요
   if (inCommentOrString(line, lang)) return null;
   // 파일 맨 앞이면 프로젝트를 만들 때 생기는 기본 코드도 같이 보여 줘요.
   const atStart = !text.slice(0, pos - (/<?!?[\w$@:-]*$/.exec(line)?.[0].length ?? 0)).trim() && !text.slice(pos).trim();
-  const tpls = (dropLt = false): Item[] => (atStart ? templatesFor(lang) : []).map((t) => {
+  const tpls = (dropLt = false): Item[] => (atStart && templates ? templatesFor(lang) : []).map((t) => {
     const body = fillTemplate(t, file).body;
     if (!dropLt) return { label: t.label, insert: body, kind: 'tpl' as const, detail: t.from };
     // <mvc 처럼 태그부터 쳤을 때는 태그 이름으로 찾을 수 있게 해요.
@@ -497,4 +498,36 @@ export function newline(text: string, pos: number, lang: string): { text: string
   const between = more && ((prev === '{' && next === '}') || (prev === '(' && next === ')') || (prev === '[' && next === ']') || (prev === '>' && text.startsWith('</', pos)));
   const ins = `\n${inner}` + (between ? `\n${indent}` : '');
   return { text: ins, caret: 1 + inner.length };
+}
+
+/* ───────── 리뷰 댓글 안의 코드 ───────── */
+
+export interface CodeSpot { lang: string; start: number; code: string; inline: boolean }
+
+/**
+ * 댓글 글에서 커서가 `한 줄 코드`나 ```코드 블록``` 안에 있으면 그 코드 부분을 알려 줘요.
+ * tagLang은 ```abap 처럼 적은 언어 이름을 언어 id로 바꾸는 함수예요.
+ */
+export function codeSpotAt(text: string, pos: number, fallback: string, tagLang: (tag: string, fb: string) => string): CodeSpot | null {
+  const fence = /```([\w-]*)[^\S\n]*\n/g;
+  let inFence = false;
+  for (let m = fence.exec(text); m; m = fence.exec(text)) {
+    const cs = m.index + m[0].length;
+    const close = text.indexOf('```', cs);
+    const ce = close < 0 ? text.length : close;
+    if (pos >= cs && pos <= ce) return { lang: tagLang(m[1], fallback), start: cs, code: text.slice(cs, ce), inline: false };
+    if (pos > m.index && pos < cs) inFence = true;
+    if (close < 0) break;
+    fence.lastIndex = close + 3;
+  }
+  if (inFence) return null;
+  const ls = text.lastIndexOf('\n', pos - 1) + 1;
+  const before = text.slice(ls, pos).replace(/```/g, '');
+  if ((before.match(/`/g) ?? []).length % 2 === 0) return null;
+  const start = ls + text.slice(ls, pos).lastIndexOf('`') + 1;
+  const le = text.indexOf('\n', pos);
+  const lineEnd = le < 0 ? text.length : le;
+  const tick = text.indexOf('`', pos);
+  const end = tick >= 0 && tick < lineEnd ? tick : lineEnd;
+  return { lang: fallback, start, code: text.slice(start, end), inline: true };
 }

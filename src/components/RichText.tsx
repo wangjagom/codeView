@@ -32,9 +32,9 @@ export function RichText({ text, lang = 'JavaScript' }: { text: string; lang?: s
     const blockLang = langFromTag(m[1], lang);
     const code = dedent(m[2].replace(/\n$/, ''));
     out.push(
-      <pre key={k++} className="cm-block dm" aria-label={`${langLabel(blockLang)} 코드`}>
+      <pre key={k++} className="cm-block dm" data-lang={blockLang} aria-label={`${langLabel(blockLang)} 코드`}>
         <span className="cm-block-h">{langLabel(blockLang)}</span>
-        <code dangerouslySetInnerHTML={{ __html: code.split('\n').map((l) => highlight(l, blockLang)).join('\n') }} />
+        <code data-code="block" dangerouslySetInnerHTML={{ __html: code.split('\n').map((l) => highlight(l, blockLang)).join('\n') }} />
       </pre>,
     );
     last = m.index + m[0].length;
@@ -65,7 +65,7 @@ function Inline({ text, lang }: { text: string; lang: string }) {
   return (
     <span className="cm-inline">
       {parts.map((p, i) => (p.length > 2 && p.startsWith('`') && p.endsWith('`')
-        ? <code key={i} className="ic-code dm" dangerouslySetInnerHTML={{ __html: highlight(p.slice(1, -1), lang) }} />
+        ? <code key={i} className="ic-code dm" data-lang={lang} data-code="inline" dangerouslySetInnerHTML={{ __html: highlight(p.slice(1, -1), lang) }} />
         : <span key={i}>{p}</span>))}
     </span>
   );

@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HoverLayer } from './components/Hover';
 import { Layout, type Filter } from './components/Layout';
 import { createProfile, friendlyError, getMyProfile, joinTeam, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
@@ -154,7 +155,7 @@ export default function App() {
     return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
   }, [phase, session, me, teams, teamId, profiles, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
-  const toastEl = <div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div>;
+  const toastEl = <><div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div><HoverLayer /></>;
 
   if (!isConfigured) return <SetupNotice />;
   if (phase === 'loading') return <div className="auth"><p className="muted">불러오는 중…</p></div>;

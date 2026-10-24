@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Problem } from '../lib/checks';
-import { PAIRS, caseFor, expand, fuzzy, newline, shouldPair, suggest, type Item, type Kind, type Suggestion } from '../lib/complete';
+import { PAIRS, caseFor, expand, newline, shouldPair, suggest, type Item, type Suggestion } from '../lib/complete';
 import { highlight, highlightWithMark } from '../lib/highlight';
 import { fillTemplate, templatesFor, type Template } from '../lib/templates';
 import { Icon } from './Icon';
+import { registerHoverSource } from './Hover';
+import { SuggestList, insertText } from './SuggestList';
 
 interface Props {
   id: string;
@@ -21,8 +23,6 @@ interface Props {
 
 const LINE_H = 13 * 1.7;
 const PAD_TOP = 10, PAD_LEFT = 4;
-const KIND_ICON: Record<Kind, string> = { tpl: '▤', snip: '{}', kw: 'K', tag: '<>', attr: '=', prop: '#', val: 'v', fn: 'ƒ', cls: 'C', mod: 'N', word: 'ab' };
-const KIND_NAME: Record<Kind, string> = { tpl: '기본 코드', snip: '스니펫', kw: '키워드', tag: '태그', attr: '속성', prop: '속성', val: '값', fn: '메서드', cls: '클래스', mod: '네임스페이스', word: '' };
 
 /**
  * VS Code(Dark Modern)처럼 보이는 코드 입력칸.
@@ -35,7 +35,6 @@ export function CodeEditor({ id, value, lang, problems, placeholder, fileName = 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const measRef = useRef<HTMLSpanElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
   const mute = useRef(false);
   const [cw, setCw] = useState(7.8);
   const [sg, setSg] = useState<(Suggestion & { i: number }) | null>(null);
@@ -50,7 +49,26 @@ export function CodeEditor({ id, value, lang, problems, placeholder, fileName = 
 
   useLayoutEffect(() => { const w = measRef.current?.getBoundingClientRect().width; if (w) setCw(w / 20); }, []);
   useEffect(() => { setSg(null); }, [lang]);
-  useEffect(() => { (listRef.current?.children[sg?.i ?? 0] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' }); }, [sg?.i, sg]);
+
+  // 마우스를 올린 글자 위치를 계산해서 설명 창(Hover)에 알려 줘요.
+  const live = useRef({ value, lang, cw, open: false });
+  live.current = { value, lang, cw, open: Boolean(sg) };
+  useEffect(() => {
+    const t = taRef.current; if (!t) return;
+    return registerHoverSource(t, (x, y) => {
+      const { value: v, lang: l, cw: w, open: busy } = live.current;
+      if (busy) return null;
+      const r = t.getBoundingClientRect();
+      const px = x - r.left - PAD_LEFT + t.scrollLeft, py = y - r.top - PAD_TOP + t.scrollTop;
+      if (px < 0 || py < 0) return null;
+      const all = v.split('\n');
+      const row = Math.floor(py / LINE_H), col = Math.floor(px / w);
+      const line = all[row];
+      if (line === undefined || col >= line.length) return null;
+      const top = r.top + PAD_TOP + row * LINE_H - t.scrollTop;
+      return { lang: l, line, col, code: v, lineNo: row, rect: { left: r.left + PAD_LEFT + col * w - t.scrollLeft, top, bottom: top + LINE_H, width: w } };
+    });
+  }, []);
 
   const sync = (t: HTMLTextAreaElement) => {
     if (preRef.current) { preRef.current.scrollTop = t.scrollTop; preRef.current.scrollLeft = t.scrollLeft; }
@@ -60,14 +78,8 @@ export function CodeEditor({ id, value, lang, problems, placeholder, fileName = 
   /** 글을 바꾸되 되돌리기(Ctrl+Z)가 되도록 브라우저 입력처럼 넣어요. sel은 넣은 글 안에서의 커서 위치예요. */
   const edit = (from: number, to: number, text: string, sel0 = text.length, sel1 = sel0) => {
     const t = taRef.current; if (!t) return;
-    t.focus();
-    t.setSelectionRange(from, to);
     mute.current = true;
-    let ok = false;
-    try { ok = text ? document.execCommand('insertText', false, text) : document.execCommand('delete'); } catch { ok = false; }
-    mute.current = false;
-    if (!ok || t.value.slice(from, from + text.length) !== text) { t.setRangeText(text, from, to, 'end'); onChange(t.value); }
-    t.setSelectionRange(from + sel0, from + sel1);
+    try { insertText(t, from, to, text, sel0, sel1, onChange); } finally { mute.current = false; }
   };
 
   const open = (v: string, pos: number, force = false) => {
@@ -241,30 +253,9 @@ export function CodeEditor({ id, value, lang, problems, placeholder, fileName = 
             onMouseDown={() => setSg(null)}
             onBlur={() => setSg(null)}
           />
-          {sg && (
-            <div className="sg" style={pop} onPointerDown={(e) => e.preventDefault()}>
-              <ul id={`${id}-sg`} role="listbox" ref={listRef} aria-label="자동완성">
-                {sg.items.map((it, i) => (
-                  <li key={it.kind + it.label} id={`${id}-sg-${i}`} role="option" aria-selected={i === sg.i}
-                    className={i === sg.i ? 'on' : ''} onMouseMove={() => { if (sg.i !== i) setSg({ ...sg, i }); }} onClick={() => accept(it)}>
-                    <span className={`sg-ic k-${it.kind}`} aria-hidden="true">{KIND_ICON[it.kind]}</span>
-                    <span className="sg-l">{marked(it.label, sg.prefix)}</span>
-                    <span className="sg-d">{it.detail ?? KIND_NAME[it.kind]}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="sg-foot">Tab·Enter 넣기 · ↑↓ 고르기 · Esc 닫기</div>
-            </div>
-          )}
+          {sg && <SuggestList id={`${id}-sg`} items={sg.items} index={sg.i} prefix={sg.prefix} style={pop} onIndex={(i) => setSg({ ...sg, i })} onPick={accept} />}
         </div>
       </div>
     </div>
   );
-}
-
-/** 친 글자와 맞는 부분을 파랗게 */
-function marked(label: string, prefix: string) {
-  const hit = new Set(label.toLowerCase().startsWith(prefix.toLowerCase()) ? [...prefix].map((_, i) => i) : fuzzy(label, prefix) ?? []);
-  if (!hit.size) return label;
-  return [...label].map((c, i) => (hit.has(i) ? <b key={i}>{c}</b> : c));
 }

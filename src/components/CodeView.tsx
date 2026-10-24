@@ -6,6 +6,7 @@ import type { Profile, Suggestion, Thread } from '../lib/types';
 import { timeAgo } from '../lib/util';
 import { Avatar } from './Avatar';
 import { RichText } from './RichText';
+import { AssistTextarea } from './AssistTextarea';
 import { Icon } from './Icon';
 
 const langFence = (id: string) => (id === 'CDS' ? 'cds' : id === 'SQLScript' ? 'sql' : fenceOf(id));
@@ -38,7 +39,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
   }, [threads, lines.length]);
 
   return (
-    <div className="rows">
+    <div className="rows" data-lang={lang} data-code-all="row">
       {lines.map((text, i) => {
         const ln = i + 1;
         const prob = problems.find((p) => p.line === ln);
@@ -62,7 +63,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
               </div>
               {readOnly ? <div className="num">{ln}</div>
                 : <button type="button" className="num" tabIndex={-1} aria-hidden="true" onClick={() => setComposer(composer === ln ? null : ln)}>{ln}</button>}
-              <div className="txt" dangerouslySetInnerHTML={{ __html: html || ' ' }} />
+              <div className="txt" data-code="row" dangerouslySetInnerHTML={{ __html: html || ' ' }} />
             </div>
             {(prob || ts.length > 0 || composer === ln) && (
               <div className="inl">
@@ -124,9 +125,9 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
                       : isAuthor && !readOnly ? <button type="button" className="btn primary sm with-ic" onClick={() => onApply?.(c.id)}><Icon name="check" />제안 적용</button>
                       : <span>글쓴이가 적용할 수 있어요</span>}
                   </div>
-                  <div className="diff">
-                    {s.original.map((t, i) => <div className="d" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
-                    {s.to.map((t, i) => <div className="a" key={'a' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
+                  <div className="diff" data-lang={lang} data-code-all="diff">
+                    {s.original.map((t, i) => <div className="d" data-code="diff" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
+                    {s.to.map((t, i) => <div className="a" data-code="diff" key={'a' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
                   </div>
                 </div>
               )}
@@ -143,7 +144,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
           setBusy(true); const ok = await onReply(v); setBusy(false);
           if (ok) setReply('');
         }}>
-          <textarea id={`reply-${thread.id}`} rows={Math.min(8, Math.max(1, reply.split('\n').length))} value={reply} onChange={(e) => setReply(e.target.value)}
+          <AssistTextarea lang={lang} context={lines.join('\n')} id={`reply-${thread.id}`} rows={Math.min(8, Math.max(1, reply.split('\n').length))} value={reply} onChange={(e) => setReply(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
             placeholder="답글 달기" aria-label="답글" maxLength={5000} />
           <button className="btn primary sm with-ic" disabled={busy || !reply.trim()} aria-label="답글 보내기"><Icon name="send" />보내기</button>
@@ -196,7 +197,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
         <button type="button" className="act-btn sm" onClick={() => wrap(true)}><code>```</code>코드 블록</button>
         <span className="hint">누르고 바로 코드를 쓰거나, 글자를 고른 뒤 누르면 감싸요 · {langLabel(lang)} 색</span>
       </div>
-      <textarea ref={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
+      <AssistTextarea lang={lang} context={lines.join('\n')} areaRef={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
         placeholder={`${line}번째 줄에 대한 리뷰를 남겨 주세요.\n코드는 \`백틱\`, 여러 줄은 \`\`\`로 감싸면 색이 들어가요.`}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }} />
       {/`/.test(body) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={body} lang={lang} /></div>}
@@ -210,7 +211,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
             </select>
             <span>을 이렇게 바꿔요</span>
           </div>
-          <textarea className="mono" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} aria-label="제안할 코드" rows={Math.max(2, to.split('\n').length)} />
+          <AssistTextarea lang={lang} context={lines.join('\n')} mode="code" className="mono" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} aria-label="제안할 코드" rows={Math.max(2, to.split('\n').length)} />
         </div>
       )}
       <div className="row-a">
