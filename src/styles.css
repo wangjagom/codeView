@@ -12,6 +12,7 @@
   --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --r: 16px;
+  --track: #e4e8ed; --seg-on: #ffffff;
   color-scheme: light;
 }
 /* 화면 모드: 내 정보 › 화면에서 시스템·라이트·다크를 골라요 (html[data-theme]). */
@@ -24,6 +25,7 @@
     --code-bg: #16181c; --code-line: #1f2227; --code-num: #4e5968;
     --t-kw: #ff7aa8; --t-str: #8fd694; --t-num: #ffc27a; --t-fn: #8ab0ff; --t-com: #6b7684; --t-type: #d7a6ff; --t-tag: #ff9e7a;
     --add: #15302a; --add-fg: #6fe0a8; --del: #3a1e22; --del-fg: #ff9aa3;
+    --track: #24262b; --seg-on: #3a3e46;
     color-scheme: dark;
   }
 }
@@ -35,6 +37,7 @@
   --code-bg: #16181c; --code-line: #1f2227; --code-num: #4e5968;
   --t-kw: #ff7aa8; --t-str: #8fd694; --t-num: #ffc27a; --t-fn: #8ab0ff; --t-com: #6b7684; --t-type: #d7a6ff; --t-tag: #ff9e7a;
   --add: #15302a; --add-fg: #6fe0a8; --del: #3a1e22; --del-fg: #ff9aa3;
+  --track: #24262b; --seg-on: #3a3e46;
   color-scheme: dark;
 }
 
@@ -263,7 +266,7 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .turn-h button .ic { width: 13px; height: 13px; }
 
 /* 홈 목록: 종류 탭 → (리뷰 요청이면) 상태 칩 → 개수 · 과제 · 정렬 */
-.feed-tabs { margin: 16px 0 0; background: var(--fill-2); }
+.feed-tabs { margin: 16px 0 0; }
 .feed-tabs .chip-n { opacity: .6; }
 .st-chips { padding-top: 10px; margin-bottom: 0; gap: 6px; }
 .st-chips .chip { background: var(--surface); }
@@ -278,7 +281,7 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .theme-seg { flex: none; width: 200px; }
 .theme-seg button { padding: 7px 4px; font-size: 13.5px; }
 @media (max-width: 380px) { .theme-seg { width: 100%; } }
-.my-tabs { margin: 0 0 10px; background: var(--fill-2); }
+.my-tabs { margin: 0 0 10px; }
 .my-tabs .chip-n { opacity: .6; }
 .list-bar { display: flex; align-items: center; gap: 6px; margin: 14px 4px 10px; }
 .list-bar > .lb-n { flex: 1; min-width: 0; }
@@ -387,10 +390,20 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .card .inp, .card .field input, .card .field textarea { background: var(--fill); }
 .hint { font-size: 13px; color: var(--faint); }
 .two { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--fill); border-radius: 12px; padding: 4px; }
-.seg.seg3 { grid-template-columns: repeat(3, 1fr); }
-.seg button { border: 0; background: transparent; border-radius: 9px; padding: 9px 6px; font-size: 14px; color: var(--faint); font-weight: 500; }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+/* 세그먼트 탭: 회색 홈 위에서 흰 알약이 고른 칸으로 미끄러져요 (:has로 몇 번째인지 알아내요) */
+.seg { --n: 2; --i: 0; position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr 1fr; background: var(--track); border-radius: 12px; padding: 4px; }
+.seg.seg3 { --n: 3; grid-template-columns: repeat(3, 1fr); }
+.seg button { position: relative; border: 0; background: transparent; border-radius: 9px; padding: 9px 6px; font-size: 14px; color: var(--faint); font-weight: 500; transition: color .2s ease; }
+.seg button:hover:not([aria-pressed="true"]) { color: var(--sub); }
+.seg button[aria-pressed="true"] { color: var(--fg); font-weight: 700; }
+.seg::before { content: ''; position: absolute; z-index: -1; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 9px; background: var(--seg-on); box-shadow: 0 1px 3px rgba(0, 0, 0, .1), 0 0 0 .5px rgba(0, 0, 0, .04); transform: translateX(calc(100% * var(--i))); transition: transform .32s cubic-bezier(.3, .8, .25, 1), opacity .15s ease; }
+.seg:has(> button:nth-child(2)[aria-pressed="true"]) { --i: 1; }
+.seg:has(> button:nth-child(3)[aria-pressed="true"]) { --i: 2; }
+.seg:not(:has(> button[aria-pressed="true"]))::before { opacity: 0; }
+@supports not selector(:has(*)) {
+  .seg::before { display: none; }
+  .seg button[aria-pressed="true"] { background: var(--seg-on); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+}
 .colors { display: flex; gap: 10px; flex-wrap: wrap; }
 .colors .ava { width: 36px; height: 36px; }
 .colors .ava[aria-checked="true"] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }

@@ -103,14 +103,10 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
             {THEMES.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={theme === v} aria-pressed={theme === v} onClick={() => { setTheme(v); setThemeState(v); }}>{l}</button>)}
           </div>
         </div>
-      </div>
-
-      <div className="sec-h"><h2>알림</h2><span className="muted small">선택</span></div>
-      <div className="card list">
         {!prefs ? <div className="item"><Loading className="muted small" /></div> : (
           <>
             <div className="item">
-              <span className="body"><span className="t">이메일로 알림 받기</span><span className="m">{notifyOn && prefs.email ? prefs.email : '이메일은 알림에만 쓰고 로그인에는 쓰지 않아요'}</span></span>
+              <span className="body"><span className="t">이메일 알림 <span className="muted small">선택</span></span><span className="m">{notifyOn && prefs.email ? prefs.email : '이메일은 알림에만 쓰고 로그인에는 쓰지 않아요'}</span></span>
               <Switch on={notifyOn} label="이메일로 알림 받기" onChange={(v) => { setNotifyOn(v); if (!v) savePrefs(false); else setDirty(true); }} />
             </div>
             <Expand open={notifyOn}>
