@@ -6,7 +6,7 @@ import { ROLE_LABEL } from '../lib/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
-export type Filter = 'all' | 'turn' | 'share' | 'mine' | 'done' | 'wait' | 'doing';
+export type Filter = 'all' | 'turn' | 'share' | 'saved' | 'mine' | 'done' | 'wait' | 'doing';
 
 /** 하단 탭을 보여 줄 화면 (나머지는 뒤로 가기 + 화면 아래 버튼) */
 const TAB_VIEWS = new Set(['feed', 'join', 'team', 'me']);
@@ -22,7 +22,7 @@ export function Layout({ view, sheet, onSheet, children }: {
 }) {
   const withTabs = TAB_VIEWS.has(view);
   useEffect(() => {
-    document.body.dataset.page = view === 'new' || view === 'teams' ? 'form' : '';
+    document.body.dataset.page = view === 'new' || view === 'edit' || view === 'teams' ? 'form' : '';
     return () => { document.body.dataset.page = ''; };
   }, [view]);
 

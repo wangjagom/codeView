@@ -37,6 +37,7 @@
 7. [`20261024030000_add_task.sql`](supabase/migrations/20261024030000_add_task.sql) — 코드 올릴 때 팀원 누구나 과제 추가
 8. [`20261024040000_post_kind.sql`](supabase/migrations/20261024040000_post_kind.sql) — 글 종류: 리뷰 요청 · 코드 공유
 9. [`20261024050000_multi_file.sql`](supabase/migrations/20261024050000_multi_file.sql) — 한 글에 여러 파일 (최대 10개)
+10. [`20261024060000_likes_bookmarks_edit.sql`](supabase/migrations/20261024060000_likes_bookmarks_edit.sql) — 도움됐어요·저장, 글 코드 고치기
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 
@@ -137,7 +138,9 @@ supabase/migrations/  테이블, RLS 정책, 수정 제안 적용 함수
 | 글·리뷰·팀원 보기 | 같은 팀원 |
 | 코드 올리기, 리뷰·답글 달기, 대화 해결 | 같은 팀원 (본인 이름으로만) |
 | 리뷰 글 고치기·지우기 | 쓴 사람 (수정 제안 코드는 못 바꿔요, 마지막 댓글을 지우면 대화도 지워져요) |
-| 상태 바꾸기, 글 삭제 | 글쓴이 |
+| 상태 바꾸기, 글 고치기(제목·설명·과제·리뷰어·코드), 글 삭제 | 글쓴이 (코드는 `update_post_code`로만, 새 버전으로 남고 리뷰 줄도 따라가요) |
+| 👍 도움됐어요 | 같은 팀원 (누가 눌렀는지 팀원에게 보여요) |
+| 🔖 저장 | 본인만 보여요 |
 | 수정 제안 적용 | 글쓴이 (`apply_suggestion` 함수로만, 코드 직접 수정은 막혀 있어요) |
 | 팀 만들기 | 로그인한 누구나 (직책은 직접 골라요) |
 | 팀 참여 | 초대 코드를 아는 사람 (`join_team`, 빈 직책만 고를 수 있어요) |

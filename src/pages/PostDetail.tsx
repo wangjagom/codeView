@@ -19,7 +19,7 @@ import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
 
 export function PostDetail({ id }: { id: string }) {
-  const { me, person, tick, refresh, toast } = useStore();
+  const { me, person, tick, refresh, toast, likes, bookmarks, toggleLike, toggleBookmark } = useStore();
   const [data, setData] = useState<{ post: Post; threads: Thread[]; versions: Version[] } | null>(null);
   const [error, setError] = useState('');
   const [viewVersion, setViewVersion] = useState<number | null>(null);
@@ -61,6 +61,9 @@ export function PostDetail({ id }: { id: string }) {
     catch (err) { toast(friendlyError(err)); return false; }
   };
   const share = isShare(post);
+  const likeN = likes.filter((l) => l.post_id === post.id).length;
+  const liked = likes.some((l) => l.post_id === post.id && l.user_id === me.id);
+  const saved = bookmarks.has(post.id);
   const onComment = (line: number, body: string, s: Suggestion | null, threadId?: string) =>
     run(() => addLineComment(post.id, line, body, s, threadId, fi), share ? '의견을 남겼어요' : '리뷰를 남겼어요');
   const onResolve = (tid: string, r: boolean) => { run(() => setResolved(tid, r), r ? '대화를 해결로 표시했어요' : '대화를 다시 열었어요'); };
@@ -95,6 +98,15 @@ export function PostDetail({ id }: { id: string }) {
       <BackBar />
       <div className="meta-row"><Avatar person={author} size="xs" /><b>{author.name}</b><span className="dot" />{timeAgo(post.created_at)}<span className="dot" />{post.task}</div>
       <h1 className="h-big tight">{post.title}</h1>
+      <div className="post-acts">
+        <button type="button" className={`pill-btn ${liked ? 'on' : ''}`} aria-pressed={liked} onClick={() => toggleLike(post.id)}>
+          <Icon name={liked ? 'thumbOn' : 'thumb'} />도움됐어요{likeN > 0 && <b>{likeN}</b>}
+        </button>
+        <button type="button" className={`pill-btn ${saved ? 'on' : ''}`} aria-pressed={saved} onClick={() => toggleBookmark(post.id)}>
+          <Icon name={saved ? 'bookmarkOn' : 'bookmark'} />{saved ? '저장됨' : '저장'}
+        </button>
+        {isAuthor && <a className="pill-btn" href={href({ name: 'edit', id: post.id })}><Icon name="edit" />수정</a>}
+      </div>
       {post.ask && <div className="ask"><span className="lbl">{share ? '설명' : '요청 사항'}</span><span className="body cm-text"><RichText text={post.ask} lang={post.lang} /></span></div>}
       {share ? (
         <div className="card status-card"><div className="status-row"><span className="st share">코드 공유</span><span className="sp" /><span className="muted small">질문·의견 {reviewCount}</span></div></div>

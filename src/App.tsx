@@ -2,17 +2,18 @@ import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverLayer } from './components/Hover';
 import { Layout, type Filter } from './components/Layout';
-import { createProfile, friendlyError, getMyProfile, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
+import { createProfile, friendlyError, getMyProfile, listLikes, listMyBookmarks, setBookmark, setLike, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
 import { StoreContext, lastTeam, makePerson, pendingCode, pendingProfile, type MyTeam, type Store } from './lib/store';
 import { supabase } from './lib/supabase';
-import { canManage, type CommentLite, type Member, type Post, type Profile } from './lib/types';
+import { canManage, type CommentLite, type Like, type Member, type Post, type Profile } from './lib/types';
 import { AuthCard, Login, Onboarding } from './pages/Auth';
 import { Feed } from './pages/Feed';
 import { Me } from './pages/Me';
 import { NewPost } from './pages/NewPost';
 import { PostDetail } from './pages/PostDetail';
+import { EditPost } from './pages/EditPost';
 import { TeamForms, TeamSettings, TeamsPage } from './pages/Teams';
 import { Loading } from './components/Motion';
 
@@ -30,6 +31,8 @@ export default function App() {
   const [profiles, setProfiles] = useState<Member[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<CommentLite[]>([]);
+  const [likes, setLikes] = useState<Like[]>([]);
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [toastMsg, setToastMsg] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -50,9 +53,11 @@ export default function App() {
 
   const loadTeamData = useCallback(async (tid: string) => {
     const [mem, po] = await Promise.all([listMembers(tid), listPosts(tid)]);
-    const cm = await listCommentsLite(po.map((p) => p.id));
+    const ids = po.map((p) => p.id);
+    const { data: auth } = await supabase.auth.getSession();
+    const [cm, lk, bm] = await Promise.all([listCommentsLite(ids), listLikes(ids), auth.session ? listMyBookmarks(auth.session.user.id) : Promise.resolve([])]);
     if (teamRef.current !== tid) return; // 그 사이 다른 팀으로 바꿨어요
-    setProfiles(mem); setPosts(po); setComments(cm);
+    setProfiles(mem); setPosts(po); setComments(cm); setLikes(lk); setBookmarks(new Set(bm));
   }, []);
 
   /** 팀 목록을 다시 읽고 보여 줄 팀을 골라요. */
@@ -130,10 +135,31 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `team_id=eq.${teamId}` }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'team_memberships', filter: `team_id=eq.${teamId}` }, bump)
       .subscribe();
     return () => { window.clearTimeout(timer); supabase.removeChannel(ch); };
   }, [phase, teamId, refresh]);
+
+  // 👍·🔖는 누르자마자 화면에 반영하고, 실패하면 되돌려요.
+  const toggleLike = useCallback((postId: string) => {
+    if (!session) return;
+    const uid = session.user.id;
+    const on = !likes.some((l) => l.post_id === postId && l.user_id === uid);
+    setLikes((ls) => (on ? [...ls, { post_id: postId, user_id: uid }] : ls.filter((l) => !(l.post_id === postId && l.user_id === uid))));
+    setLike(postId, on, uid).catch((e) => {
+      setLikes((ls) => (on ? ls.filter((l) => !(l.post_id === postId && l.user_id === uid)) : [...ls, { post_id: postId, user_id: uid }]));
+      toast(friendlyError(e));
+    });
+  }, [session, likes, toast]);
+  const toggleBookmark = useCallback((postId: string) => {
+    if (!session) return;
+    const on = !bookmarks.has(postId);
+    const flip = (add: boolean) => setBookmarks((b) => { const n = new Set(b); if (add) n.add(postId); else n.delete(postId); return n; });
+    flip(on);
+    toast(on ? '저장했어요 · 홈의 저장 칩에서 다시 볼 수 있어요' : '저장을 뺐어요');
+    setBookmark(postId, on, session.user.id).catch((e) => { flip(!on); toast(friendlyError(e)); });
+  }, [session, bookmarks, toast]);
 
   const signOut = useCallback(async () => { await supabase.auth.signOut(); lastTeam.set(null); location.hash = ''; }, []);
 
@@ -141,8 +167,8 @@ export default function App() {
     const team = teams.find((t) => t.id === teamId);
     if (phase !== 'ready' || !session || !me || !team) return null;
     const person = makePerson(profiles);
-    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: canManage(team.role), profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
-  }, [phase, session, me, teams, teamId, profiles, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
+    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: canManage(team.role), profiles, person, posts, comments, likes, bookmarks, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut };
+  }, [phase, session, me, teams, teamId, profiles, posts, comments, likes, bookmarks, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
   const toastEl = <><div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div><HoverLayer /></>;
 
@@ -168,11 +194,12 @@ export default function App() {
   return (
     <StoreContext.Provider value={store}>
       <Layout view={route.name} sheet={sheet} onSheet={setSheet}>
-        <div className="page" key={route.name === 'post' ? `post-${route.id}` : route.name === 'join' ? 'feed' : route.name}>
+        <div className="page" key={route.name === 'post' || route.name === 'edit' ? `${route.name}-${route.id}` : route.name === 'join' ? 'feed' : route.name}>
           {joinError && <div className="notice" role="alert">{joinError}<button type="button" className="btn ghost sm" onClick={() => setJoinError('')}>닫기</button></div>}
           {(route.name === 'feed' || route.name === 'join') && <Feed filter={filter} task={task} onFilter={setFilter} onTask={setTask} onTeam={() => setSheet(true)} />}
           {route.name === 'new' && <NewPost />}
           {route.name === 'post' && <PostDetail id={route.id} />}
+          {route.name === 'edit' && <EditPost id={route.id} />}
           {route.name === 'me' && <Me onTeam={() => setSheet(true)} />}
           {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
           {route.name === 'teams' && <TeamsPage />}

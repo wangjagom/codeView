@@ -110,6 +110,9 @@ export interface Version {
 }
 
 /** 목록 화면에서 쓰는 가벼운 댓글 정보 */
+/** 👍 도움됐어요 한 번 */
+export interface Like { post_id: string; user_id: string }
+
 export interface CommentLite {
   post_id: string;
   author_id: string;

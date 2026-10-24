@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Comment, CommentLite, Member, Post, PostFile, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
+import type { Comment, CommentLite, Like, Member, Post, PostFile, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
 
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -167,6 +167,53 @@ export async function createPost(input: NewPost & { kind?: PostKind; files?: Pos
   return must(await supabase.from('posts').insert(row as NewPost).select('*').single());
 }
 
+/* ---------- 👍 도움됐어요 · 🔖 저장 ---------- */
+
+// 새 SQL(20261024060000_likes_bookmarks_edit.sql) 전이면 표가 없어서, 목록은 빈 채로 두고 앱은 그대로 써요.
+const missingTable = (e: { message: string; code?: string } | null) => Boolean(e && (e.code === '42P01' || e.code === 'PGRST205' || /relation .* does not exist|Could not find the table/i.test(e.message)));
+
+export async function listLikes(postIds: string[]): Promise<Like[]> {
+  if (!postIds.length) return [];
+  const res = await supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds);
+  if (missingTable(res.error)) return [];
+  return must(res) as Like[];
+}
+
+export async function listMyBookmarks(userId: string): Promise<string[]> {
+  const res = await supabase.from('post_bookmarks').select('post_id').eq('user_id', userId);
+  if (missingTable(res.error)) return [];
+  return (must(res) as { post_id: string }[]).map((r) => r.post_id);
+}
+
+export async function setLike(postId: string, on: boolean, userId: string): Promise<void> {
+  const res = on ? await supabase.from('post_likes').insert({ post_id: postId }) : await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
+  if (res.error && /duplicate key/.test(res.error.message)) return;
+  if (missingTable(res.error)) throw new Error('likes table missing');
+  must(res);
+}
+
+export async function setBookmark(postId: string, on: boolean, userId: string): Promise<void> {
+  const res = on ? await supabase.from('post_bookmarks').insert({ post_id: postId }) : await supabase.from('post_bookmarks').delete().eq('post_id', postId).eq('user_id', userId);
+  if (res.error && /duplicate key/.test(res.error.message)) return;
+  if (missingTable(res.error)) throw new Error('likes table missing');
+  must(res);
+}
+
+/* ---------- 글 고치기 ---------- */
+
+/** 제목·설명·과제·리뷰어 고치기 (글쓴이만) */
+export async function updatePostMeta(postId: string, patch: Partial<Pick<Post, 'title' | 'ask' | 'task' | 'reviewer_ids'>>): Promise<void> {
+  const rows = must(await supabase.from('posts').update(patch).eq('id', postId).select('id')) as { id: string }[];
+  if (!rows.length) throw new Error('only the author can edit');
+}
+
+/** 코드(파일들) 고치기. 새 버전으로 남고, threads는 [{id, file(없애면 null), line}]로 옮겨요. */
+export async function updatePostCode(postId: string, files: PostFile[], threads: { id: string; file: number | null; line: number }[], note: string): Promise<Post> {
+  const res = await supabase.rpc('update_post_code', { p_post: postId, p_files: files, p_threads: threads, p_note: note });
+  if (res.error && (res.error.code === 'PGRST202' || /Could not find the function/i.test(res.error.message))) throw new Error('update_post_code missing');
+  return must(res) as Post;
+}
+
 export async function setStatus(postId: string, status: Status): Promise<void> {
   must(await supabase.from('posts').update({ status }).eq('id', postId));
 }
@@ -219,6 +266,8 @@ export function friendlyError(e: unknown): string {
     ? '파일 이름이 겹치거나 비어 있는 파일이 있어요. 확인해 주세요.'
     : '파일 여러 개를 올리려면 Supabase에서 새 SQL(20261024050000_multi_file.sql)을 먼저 실행해야 해요.';
   if (/'kind' column|column posts\.kind|kind.*schema cache/i.test(msg)) return '코드 공유 글을 올리려면 Supabase에서 새 SQL(20261024040000_post_kind.sql)을 먼저 실행해야 해요.';
+  if (/likes table missing|update_post_code missing/.test(msg)) return '이 기능을 쓰려면 Supabase에서 새 SQL(20261024060000_likes_bookmarks_edit.sql)을 먼저 실행해야 해요.';
+  if (/only the author can edit/.test(msg)) return '글쓴이만 고칠 수 있어요.';
   if (/add_team_task missing/.test(msg)) return '팀원이 과제를 추가하려면 Supabase에서 새 SQL(20261024030000_add_task.sql)을 먼저 실행해야 해요. 지금은 팀장·부팀장만 추가할 수 있어요.';
   if (/too many tasks/.test(msg)) return '과제는 30개까지 만들 수 있어요.';
   if (/invalid task name/.test(msg)) return '과제 이름은 1~40자로 적어 주세요.';

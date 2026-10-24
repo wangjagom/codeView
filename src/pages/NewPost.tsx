@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { CodeEditor } from '../components/CodeEditor';
 import { BackBar } from '../components/Layout';
-import { addTeamTask, createPost, friendlyError } from '../lib/api';
+import { addTeamTask, createPost, friendlyError, updatePostCode, updatePostMeta } from '../lib/api';
 import { checkCode } from '../lib/checks';
 import { LANGS, langFromCode, langFromFile } from '../lib/langs';
 import { href, navigate } from '../lib/router';
@@ -10,7 +10,8 @@ import { useStore } from '../lib/store';
 import { Dots, Expand, useFlip } from '../components/Motion';
 import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
 import { TEMPLATE_SETS, templateSetFiles } from '../lib/templates';
-import type { PostKind } from '../lib/types';
+import { filesOf, type Post, type PostKind, type Thread } from '../lib/types';
+import { lineMapper } from '../lib/diff';
 import { LangIcon } from '../components/LangIcon';
 
 const DRAFT_KEY = 'codeview:draft';
@@ -18,7 +19,7 @@ const NEW_TASK = '__new_task__';
 const MAX_FILES = 10;
 
 /** 올리는 중인 파일 하나. langAuto면 파일 이름·코드를 보고 언어를 골라요. */
-interface DraftFile { id: string; name: string; lang: string; code: string; langAuto: boolean }
+interface DraftFile { id: string; name: string; lang: string; code: string; langAuto: boolean; /** 고치기: 원래 글에서 몇 번째 파일이었는지 */ orig?: number }
 interface Draft { title: string; task: string; ask: string; kind?: PostKind; files?: DraftFile[]; file?: string; lang?: string; code?: string }
 
 let fileSeq = 0;
@@ -37,17 +38,26 @@ function draftFiles(d: Draft | null): DraftFile[] {
 }
 const sampleOf = (lang: string) => LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt';
 
-export function NewPost() {
+/** 고치기로 열 때 받는 원래 글 */
+export interface EditTarget { post: Post; threads: Thread[] }
+
+export function NewPost({ edit }: { edit?: EditTarget } = {}) {
   const { me, team, isOwner, profiles, refresh, reloadTeams, toast } = useStore();
-  const d = loadDraft();
+  // 고치기는 임시 저장을 쓰지 않고 원래 글로 시작해요.
+  const d: Draft | null = edit
+    ? { title: edit.post.title, task: edit.post.task, ask: edit.post.ask, kind: edit.post.kind ?? 'review', files: filesOf(edit.post).map((f, i) => newFile(f.lang, { ...f, langAuto: false, orig: i })) }
+    : loadDraft();
   const [title, setTitle] = useState(d?.title ?? '');
-  const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : team.tasks[0] ?? '자유 질문');
+  const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : edit ? edit.post.task : team.tasks[0] ?? '자유 질문');
   const [ask, setAsk] = useState(d?.ask ?? '');
   const [kind, setKind] = useState<PostKind>(d?.kind === 'share' ? 'share' : 'review');
   const [files, setFiles] = useState<DraftFile[]>(() => draftFiles(d));
   const [active, setActive] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(edit?.post.reviewer_ids ?? []);
+  const [note, setNote] = useState('');
+  /** 파일마다 달린 리뷰 수 (고치기에서 파일을 뺄 때 알려 줘요) */
+  const reviewsIn = (f: DraftFile) => (edit && f.orig !== undefined ? edit.threads.filter((t) => (t.file ?? 0) === f.orig).reduce((n, t) => n + t.comments.length, 0) : 0);
   const [busy, setBusy] = useState(false);
   const [newTask, setNewTask] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
@@ -62,7 +72,7 @@ export function NewPost() {
   const e = problems.filter((p) => p.sev === 'e').length;
   const similar = newTask ? similarTasks(newTask, team.tasks) : [];
 
-  const persist = (patch: Partial<Draft>) => saveDraft({ title, task, ask, kind, files, ...patch });
+  const persist = (patch: Partial<Draft>) => { if (!edit) saveDraft({ title, task, ask, kind, files, ...patch }); };
   /** 지금 파일 고치기 */
   const patchFile = (patch: Partial<DraftFile>) => {
     const next = files.map((f, i) => (i === active ? { ...f, ...patch } : f));
@@ -77,7 +87,7 @@ export function NewPost() {
   };
   const removeFile = (i: number) => {
     const f = files[i];
-    if (f.code.trim() && confirmRemove !== f.id) { setConfirmRemove(f.id); return; }
+    if ((f.code.trim() || reviewsIn(f) > 0) && confirmRemove !== f.id) { setConfirmRemove(f.id); return; }
     setConfirmRemove(null);
     const next = files.filter((_, j) => j !== i);
     setAllFiles(next.length ? next : [newFile()], Math.max(0, Math.min(active > i ? active - 1 : active, next.length - 1)));
@@ -119,6 +129,10 @@ export function NewPost() {
     const dup = ready.findIndex((f, i) => ready.findIndex((g) => g.name.toLowerCase() === f.name.toLowerCase()) !== i);
     if (dup >= 0) { setActive(dup); toast(`파일 이름 '${ready[dup].name}'이(가) 겹쳐요`); document.getElementById('nFile')?.focus(); return; }
     setBusy(true);
+    if (edit) {
+      try { await saveEdit(edit, ready); } catch (err) { toast(friendlyError(err)); } finally { setBusy(false); }
+      return;
+    }
     try {
       const first = ready[0];
       const p = await createPost({ team_id: team.id, title: title.trim(), file_name: first.name, lang: first.lang, task, ask: ask.trim(), code: first.code, reviewer_ids: share ? [] : picked, kind, files: ready });
@@ -133,18 +147,45 @@ export function NewPost() {
     }
   };
 
-  const allEmpty = files.every((f) => !f.code.trim());
+  /** 고치기 저장: 제목·설명 등은 바로, 코드가 바뀌었으면 새 버전으로 (리뷰는 고친 줄을 따라가요) */
+  const saveEdit = async ({ post, threads }: EditTarget, ready: { name: string; lang: string; code: string }[]) => {
+    const meta: Partial<Pick<Post, 'title' | 'ask' | 'task' | 'reviewer_ids'>> = {};
+    if (title.trim() !== post.title) meta.title = title.trim();
+    if (ask.trim() !== post.ask) meta.ask = ask.trim();
+    if (task !== post.task) meta.task = task;
+    const rv = share ? [] : picked;
+    if ([...rv].sort().join() !== [...post.reviewer_ids].sort().join()) meta.reviewer_ids = rv;
+    const old = filesOf(post);
+    const codeChanged = ready.length !== old.length || ready.some((f, i) => f.name !== old[i].name || f.lang !== old[i].lang || f.code !== old[i].code);
+    if (!Object.keys(meta).length && !codeChanged) { toast('바뀐 내용이 없어요'); return; }
+    if (Object.keys(meta).length) await updatePostMeta(post.id, meta);
+    if (codeChanged) {
+      const moved = threads.map((t) => {
+        const from = t.file ?? 0;
+        const to = files.findIndex((f) => f.orig === from);
+        if (to < 0) return { id: t.id, file: null, line: 1 };
+        const line = lineMapper(old[from].code, ready[to].code)(t.line);
+        return { id: t.id, file: to, line: Math.min(line, ready[to].code.split('\n').length) };
+      });
+      await updatePostCode(post.id, ready, moved, note.trim() || '직접 수정');
+    }
+    await refresh();
+    toast(codeChanged ? `고친 코드를 v${post.version + 1}로 올렸어요` : '글을 고쳤어요');
+    navigate({ name: 'post', id: post.id });
+  };
+
+  const allEmpty = !edit && files.every((f) => !f.code.trim());
 
   return (
     <section>
-      <BackBar label="닫기" />
-      <h1 className="h-big tight">코드 올리기</h1>
-      <div className="seg kind-seg" role="radiogroup" aria-label="글 종류">
+      {edit ? <BackBar label="취소" to={href({ name: 'post', id: edit.post.id })} /> : <BackBar label="닫기" />}
+      <h1 className="h-big tight">{edit ? '글 고치기' : '코드 올리기'}</h1>
+      {edit ? <p className="muted small edit-kind">{share ? '코드 공유' : '리뷰 요청'} 글 · 지금 v{edit.post.version} · 코드를 고치면 새 버전으로 남고, 리뷰는 고친 줄을 따라가요</p> : <div className="seg kind-seg" role="radiogroup" aria-label="글 종류">
         <button type="button" role="radio" aria-checked={!share} aria-pressed={!share} onClick={() => { setKind('review'); persist({ kind: 'review' }); }}>
           <b>리뷰 요청</b><small>문제를 같이 봐 주세요</small></button>
         <button type="button" role="radio" aria-checked={share} aria-pressed={share} onClick={() => { setKind('share'); persist({ kind: 'share' }); }}>
           <b>코드 공유</b><small>만든 코드를 나눠요</small></button>
-      </div>
+      </div>}
       <form className="form" id="newPostForm" onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder={share ? '예: 판매 오더 조회 CDS View + Projection' : '예: 삭제 버튼을 누르면 다른 항목이 지워져요'} onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
@@ -181,7 +222,7 @@ export function NewPost() {
                     <LangIcon lang={f.lang} size={16} />{f.name.trim() || `파일 ${i + 1}`}
                     {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
                   </button>
-                  {files.length > 1 && <button type="button" className="ftab-x" aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? '빼기?' : '×'}</button>}
+                  {files.length > 1 && <button type="button" className="ftab-x" aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? (reviewsIn(f) > 0 ? `리뷰 ${reviewsIn(f)}개도 빼기?` : '빼기?') : '×'}</button>}
                 </span>
               );
             })}
@@ -226,10 +267,12 @@ export function NewPost() {
             )) : <span className="muted">다른 팀원이 없어요 · <a href={href({ name: 'team' })}>초대하기</a></span>}
           </div>
         </div></Expand>
-        <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>
+        {edit ? (
+          <div className="field"><label htmlFor="nNote">고친 내용 <span className="muted">(선택 · 버전 기록에 남아요)</span></label><input id="nNote" value={note} maxLength={80} placeholder="예: 리뷰 반영해서 catch에서 throw 하도록" onChange={(ev) => setNote(ev.target.value)} /></div>
+        ) : <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>}
       </form>
       <div className="dock"><div className="dock-in">
-        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : `${share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}${files.length > 1 ? ` · 파일 ${files.length}개` : ''}`}</button>
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>{edit ? '저장하는 중' : '올리는 중'}<Dots /></> : edit ? '고친 내용 저장' : `${share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}${files.length > 1 ? ` · 파일 ${files.length}개` : ''}`}</button>
       </div></div>
     </section>
   );

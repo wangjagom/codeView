@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CommentLite, Member, Post, Profile, Role, Team } from './types';
+import type { CommentLite, Like, Member, Post, Profile, Role, Team } from './types';
 
 export type MyTeam = Team & { role: Role };
 
@@ -16,6 +16,12 @@ export interface Store {
   person: (id: string) => Profile;
   posts: Post[];
   comments: CommentLite[];
+  /** 지금 팀 글들의 👍 */
+  likes: Like[];
+  /** 내가 🔖 저장한 글 id */
+  bookmarks: Set<string>;
+  toggleLike: (postId: string) => void;
+  toggleBookmark: (postId: string) => void;
   /** 서버에서 지금 팀의 목록을 다시 불러와요. */
   refresh: () => Promise<void>;
   /** 팀 정보·팀 목록을 다시 불러와요. 팀을 나가거나 지웠을 때도 써요. */
