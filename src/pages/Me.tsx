@@ -9,8 +9,11 @@ import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
 import { PostItem } from './Feed';
 import { href } from '../lib/router';
+import { getTheme, setTheme, type Theme } from '../lib/theme';
 import { ProfileFields } from '../components/ProfileFields';
 import { Dots, Expand, Loading } from '../components/Motion';
+
+const THEMES: [Theme, string][] = [['system', '시스템'], ['light', '라이트'], ['dark', '다크']];
 
 function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: (v: boolean) => void }) {
   return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
@@ -42,6 +45,7 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
   const [notifyOn, setNotifyOn] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(getTheme);
 
   useEffect(() => {
     getNotificationPrefs()
@@ -90,6 +94,16 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
       </Expand>
 
       <MyCode onShowAll={onShowAll} />
+
+      <div className="sec-h"><h2>설정</h2></div>
+      <div className="card list">
+        <div className="item set-row">
+          <span className="body"><span className="t">화면 모드</span><span className="m">{theme === 'system' ? '기기 설정을 따라가요' : '이 브라우저에서만 바뀌어요'}</span></span>
+          <div className="seg seg3 theme-seg" role="radiogroup" aria-label="화면 모드">
+            {THEMES.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={theme === v} aria-pressed={theme === v} onClick={() => { setTheme(v); setThemeState(v); }}>{l}</button>)}
+          </div>
+        </div>
+      </div>
 
       <div className="sec-h"><h2>알림</h2><span className="muted small">선택</span></div>
       <div className="card list">

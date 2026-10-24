@@ -14,8 +14,9 @@
   --r: 16px;
   color-scheme: light;
 }
+/* 화면 모드: 내 정보 › 화면에서 시스템·라이트·다크를 골라요 (html[data-theme]). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1012; --surface: #1b1d21; --fill: #26282d; --fill-2: #30333a; --line: #2c2f35;
     --fg: #f2f4f6; --sub: #b0b8c1; --faint: #7e8894; --disabled: #4e5968;
     --accent: #5b8ffb; --accent-soft: #1d2a47; --accent-fg: #ffffff;
@@ -25,6 +26,16 @@
     --add: #15302a; --add-fg: #6fe0a8; --del: #3a1e22; --del-fg: #ff9aa3;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #1b1d21; --fill: #26282d; --fill-2: #30333a; --line: #2c2f35;
+  --fg: #f2f4f6; --sub: #b0b8c1; --faint: #7e8894; --disabled: #4e5968;
+  --accent: #5b8ffb; --accent-soft: #1d2a47; --accent-fg: #ffffff;
+  --red: #ff6b77; --red-soft: #3a1e22; --orange: #ffae3d; --orange-soft: #3a2c14; --green: #3fd196; --green-soft: #16302a;
+  --code-bg: #16181c; --code-line: #1f2227; --code-num: #4e5968;
+  --t-kw: #ff7aa8; --t-str: #8fd694; --t-num: #ffc27a; --t-fn: #8ab0ff; --t-com: #6b7684; --t-type: #d7a6ff; --t-tag: #ff9e7a;
+  --add: #15302a; --add-fg: #6fe0a8; --del: #3a1e22; --del-fg: #ff9aa3;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -83,9 +94,11 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 .fi { flex: none; display: inline-block; vertical-align: -3px; }
 .fi .fi-paper { fill: var(--fi-paper, #ffffff); stroke: var(--fi-line, #aab2bd); }
 .fi .fi-fold { stroke: var(--fi-line, #aab2bd); }
-@media (prefers-color-scheme: dark) { :root { --fi-paper: #2a2d33; --fi-line: #7b838e; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fi-paper: #2a2d33; --fi-line: #7b838e; } }
+:root[data-theme="dark"] { --fi-paper: #2a2d33; --fi-line: #7b838e; }
 .ftab.on { --fi-paper: #2e3239; --fi-line: #8a929d; }
-@media (prefers-color-scheme: dark) { .ftab.on { --fi-paper: #ffffff; --fi-line: #8a929d; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ftab.on { --fi-paper: #ffffff; --fi-line: #8a929d; } }
+:root[data-theme="dark"] .ftab.on { --fi-paper: #ffffff; --fi-line: #8a929d; }
 /* 글 상세: 도움됐어요 · 저장 · 수정 */
 .post-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 14px; }
 .pill-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 11px; border-radius: 999px; border: 0; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--sub); font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
@@ -261,6 +274,10 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .view-bar b { font-size: 18px; letter-spacing: -.02em; }
 .view-bar .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); }
 .view-bar .chip .ic { width: 13px; height: 13px; }
+.set-row { flex-wrap: wrap; row-gap: 10px; }
+.theme-seg { flex: none; width: 200px; }
+.theme-seg button { padding: 7px 4px; font-size: 13.5px; }
+@media (max-width: 380px) { .theme-seg { width: 100%; } }
 .my-tabs { margin: 0 0 10px; background: var(--fill-2); }
 .my-tabs .chip-n { opacity: .6; }
 .list-bar { display: flex; align-items: center; gap: 6px; margin: 14px 4px 10px; }
