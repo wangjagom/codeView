@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
+import { Expand, useFlip } from '../components/Motion';
 import { Header, type Filter } from '../components/Layout';
 import { checkCode } from '../lib/checks';
 import { href } from '../lib/router';
@@ -15,6 +16,7 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
 }) {
   const { me, team, posts, comments, person, profiles } = useStore();
   const [showTasks, setShowTasks] = useState(Boolean(task));
+  const listRef = useFlip<HTMLDivElement>();
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments));
 
   const match = (p: Post, f: Filter) => f === 'all' || (f === 'turn' && isMyTurn(p, me.id, comments)) || (f === 'mine' && p.author_id === me.id) || p.status === f;
@@ -43,16 +45,16 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
           {showTasks ? '과제 닫기' : '과제별'}<Icon name={showTasks ? 'down' : 'chev'} />
         </button>
       </div>
-      {showTasks && (
+      <Expand open={showTasks}>
         <div className="chips" role="group" aria-label="과제">
           {team.tasks.map((t) => <button key={t} type="button" className="chip" aria-pressed={task === t} onClick={() => onTask(task === t ? '' : t)}>{t}</button>)}
         </div>
-      )}
+      </Expand>
       <div className="chips" role="group" aria-label="상태">
         {CHIPS.map(([v, l]) => { const n = inTask.filter((p) => match(p, v)).length; return <button key={v} type="button" className="chip" aria-pressed={filter === v} onClick={() => onFilter(v)}>{l} <span className="chip-n">{n}</span></button>; })}
       </div>
 
-      <div className="card list">
+      <div className="card list" ref={listRef}>
         {list.length ? list.map((p) => <PostItem key={p.id} post={p} />) : (
           <div className="empty">
             {posts.length ? '해당하는 코드가 없어요' : <>올라온 코드가 없어요<br /><a href={href({ name: 'new' })}>코드 올리기</a>{profiles.length < 2 && <> · <a href={href({ name: 'team' })}>조원 초대하기</a></>}</>}
@@ -70,7 +72,7 @@ function PostItem({ post }: { post: Post }) {
   const n = comments.filter((c) => c.post_id === post.id).length;
   const author = person(post.author_id);
   return (
-    <a className="item" href={href({ name: 'post', id: post.id })}>
+    <a className="item" data-flip={post.id} href={href({ name: 'post', id: post.id })}>
       <Avatar person={author} size="lg" />
       <span className="body">
         <span className="t">{post.title}</span>

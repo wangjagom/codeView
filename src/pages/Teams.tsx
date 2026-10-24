@@ -7,6 +7,7 @@ import { DEFAULT_TASKS } from '../lib/config';
 import { inviteUrl, navigate } from '../lib/router';
 import { pendingCode, useStore } from '../lib/store';
 import { ROLE_LABEL, type Role, type Team } from '../lib/types';
+import { Dots, useFlip } from '../components/Motion';
 
 /** 콤마나 줄바꿈으로 구분한 과제 목록을 정리해요. */
 export function parseTasks(text: string): string[] {
@@ -80,7 +81,7 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
         {peek && <p className="peek"><b>{peek.name}</b> · 조원 {peek.members}명{peek.joined && <span className="muted"> · 이미 들어가 있는 조예요</span>}</p>}
         <span className="lbl">직책</span>
         <RolePicker value={joinRole} onChange={setJoinRole} taken={{ owner: peek?.owner_taken, vice: peek?.vice_taken }} />
-        <button className="btn primary wide" disabled={busy !== null || Boolean(peek?.joined)}>{busy === 'join' ? '참여하는 중…' : peek ? `${ROLE_LABEL[joinRole]}으로 참여` : '참여하기'}</button>
+        <button className="btn primary wide" disabled={busy !== null || Boolean(peek?.joined)}>{busy === 'join' ? <>참여하는 중<Dots /></> : peek ? `${ROLE_LABEL[joinRole]}으로 참여` : '참여하기'}</button>
       </form>
       <form className="tf-card" onSubmit={(e) => { e.preventDefault(); create(); }}>
         <h2>새 조 만들기</h2>
@@ -90,7 +91,7 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
         <input id="teamTasks" value={tasks} onChange={(e) => setTasks(e.target.value)} />
         <span className="lbl">내 직책 <span className="muted">(조장·부조장은 조를 관리할 수 있어요)</span></span>
         <RolePicker value={createRole} onChange={setCreateRole} />
-        <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? '만드는 중…' : '조 만들기'}</button>
+        <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? <>만드는 중<Dots /></> : '조 만들기'}</button>
       </form>
       {err && <p className="err" role="alert">{err}</p>}
     </div>
@@ -126,6 +127,7 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
   };
 
   const [editing, setEditing] = useState(false);
+  const memberRef = useFlip<HTMLDivElement>();
   const pretty = team.invite_code.replace(/^(.{4})(.+)$/, '$1 $2');
 
   return (
@@ -154,11 +156,11 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
       <WeekStats />
 
       <div className="sec-h"><h2>조원 {profiles.length}명</h2>{isOwner && <button type="button" onClick={() => run(() => regenerateInvite(team.id), '새 초대 코드를 만들었어요. 이전 링크는 이제 쓸 수 없어요')}>새 초대 코드</button>}</div>
-      <div className="card list">
+      <div className="card list" ref={memberRef}>
         {profiles.map((p) => {
           const given = reviewsGivenThisWeek(p.id, posts, comments);
           return (
-            <div key={p.id} className="item">
+            <div key={p.id} className="item" data-flip={p.id}>
               <Avatar person={p} />
               <span className="body">
                 <span className="t">{p.name}{p.id === me.id ? ' (나)' : ''}{p.role !== 'member' && <span className={`role ${p.role}`}>{ROLE_LABEL[p.role]}</span>}</span>

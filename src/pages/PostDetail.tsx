@@ -11,6 +11,7 @@ import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import { STATUS_LABEL, type Post, type Status, type Suggestion, type Thread, type Version } from '../lib/types';
 import { timeAgo } from '../lib/util';
+import { Loading } from '../components/Motion';
 
 export function PostDetail({ id }: { id: string }) {
   const { me, person, tick, refresh, toast } = useStore();
@@ -31,7 +32,7 @@ export function PostDetail({ id }: { id: string }) {
   const problems = useMemo(() => (post ? checkCode(shownCode, post.lang) : []), [shownCode, post]);
 
   if (error) return <section><BackBar /><div className="empty">{error}</div></section>;
-  if (!data || !post) return <section><div className="empty">불러오는 중…</div></section>;
+  if (!data || !post) return <section><div className="empty"><Loading /></div></section>;
 
   const author = person(post.author_id);
   const isAuthor = post.author_id === me.id;

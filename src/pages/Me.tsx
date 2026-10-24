@@ -8,6 +8,7 @@ import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
 import { ProfileFields } from '../components/ProfileFields';
+import { Dots, Expand, Loading } from '../components/Motion';
 
 function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: (v: boolean) => void }) {
   return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
@@ -75,33 +76,31 @@ export function Me({ onTeam }: { onTeam: () => void }) {
           setOpenEdit(!openEdit);
         }}>{openEdit ? '닫기' : '프로필 편집'}</button>
       </div>
-      {openEdit && (
+      <Expand open={openEdit}>
         <div className="card card-pad stack">
           <ProfileFields name={me.name} color={color} avatar={avatar} bio={bio} onError={toast}
             onChange={(p) => { if ('avatar' in p) setAvatar(p.avatar ?? null); if (p.bio !== undefined) setBio(p.bio); }} />
           <span className="lbl">색 <span className="muted">(사진이 없을 때)</span></span>
           <ColorPicker value={color} onChange={setColor} name={me.name} />
           <span className="muted small">로그인 이름은 바꿀 수 없어요 · 사진·소개는 선택이에요</span>
-          <button type="button" className="btn primary wide pf-save" disabled={!profileDirty || saving} onClick={saveProfile}>{saving ? '저장 중…' : '저장'}</button>
+          <button type="button" className="btn primary wide pf-save" disabled={!profileDirty || saving} onClick={saveProfile}>{saving ? <>저장 중<Dots /></> : '저장'}</button>
         </div>
-      )}
+      </Expand>
 
       <div className="sec-h"><h2>알림</h2><span className="muted small">선택</span></div>
       <div className="card list">
-        {!prefs ? <div className="item"><span className="muted small">불러오는 중…</span></div> : (
+        {!prefs ? <div className="item"><Loading className="muted small" /></div> : (
           <>
             <div className="item">
               <span className="body"><span className="t">이메일로 알림 받기</span><span className="m">{notifyOn && prefs.email ? prefs.email : '이메일은 알림에만 쓰고 로그인에는 쓰지 않아요'}</span></span>
               <Switch on={notifyOn} label="이메일로 알림 받기" onChange={(v) => { setNotifyOn(v); if (!v) savePrefs(false); else setDirty(true); }} />
             </div>
-            {notifyOn && (
-              <>
+            <Expand open={notifyOn}>
                 <div className="item"><input className="inp" id="notifyEmail" type="email" autoComplete="email" value={prefs.email} placeholder="알림 받을 이메일" onChange={(e) => change({ email: e.target.value })} /></div>
                 <div className="item"><span className="body"><span className="t">내 코드에 리뷰가 달리면</span></span><Switch on={prefs.on_review} label="내 코드에 리뷰가 달리면" onChange={(v) => change({ on_review: v })} /></div>
                 <div className="item"><span className="body"><span className="t">누가 리뷰를 부탁하면</span></span><Switch on={prefs.on_request} label="누가 리뷰를 부탁하면" onChange={(v) => change({ on_request: v })} /></div>
                 {dirty && <div className="item"><button type="button" className="btn primary wide" onClick={() => savePrefs()}>알림 설정 저장</button></div>}
-              </>
-            )}
+            </Expand>
           </>
         )}
       </div>
@@ -110,7 +109,7 @@ export function Me({ onTeam }: { onTeam: () => void }) {
       <div className="sec-h"><h2>계정</h2></div>
       <div className="card list">
         <button type="button" className="item" aria-expanded={openPw} onClick={() => setOpenPw(!openPw)}><span className="body"><span className="t">비밀번호 바꾸기</span></span><Icon name={openPw ? 'down' : 'chev'} className="chev" /></button>
-        {openPw && (
+        <Expand open={openPw}>
           <form className="item stack" onSubmit={(e) => { e.preventDefault(); changePassword(); }}>
             <input type="text" autoComplete="username" value={me.name} readOnly hidden />
             <input className="inp" id="newPw" type="password" autoComplete="new-password" value={pw} placeholder={`새 비밀번호 (${MIN_PASSWORD}자 이상)`} onChange={(e) => setPw(e.target.value)} />
@@ -118,14 +117,14 @@ export function Me({ onTeam }: { onTeam: () => void }) {
             <span className="hint">잊으면 되찾을 수 없어요</span>
             <button className="btn primary wide" disabled={!pw}>비밀번호 바꾸기</button>
           </form>
-        )}
+        </Expand>
         <button type="button" className="item" aria-expanded={confirmOut} onClick={() => setConfirmOut(!confirmOut)}><span className="body"><span className="t">로그아웃</span></span><Icon name={confirmOut ? 'down' : 'chev'} className="chev" /></button>
-        {confirmOut && (
+        <Expand open={confirmOut}>
           <div className="item stack">
             <span className="small">로그아웃할까요? 이름과 비밀번호로 다시 들어올 수 있어요.</span>
             <div className="two-btn"><button type="button" className="btn" onClick={() => setConfirmOut(false)}>취소</button><button type="button" className="btn danger-btn" onClick={signOut}>로그아웃</button></div>
           </div>
-        )}
+        </Expand>
       </div>
     </section>
   );

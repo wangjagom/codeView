@@ -14,6 +14,7 @@ import { Me } from './pages/Me';
 import { NewPost } from './pages/NewPost';
 import { PostDetail } from './pages/PostDetail';
 import { TeamForms, TeamSettings, TeamsPage } from './pages/Teams';
+import { Loading } from './components/Motion';
 
 type Phase = 'loading' | 'signedOut' | 'onboarding' | 'noTeam' | 'ready' | 'error';
 
@@ -146,7 +147,7 @@ export default function App() {
   const toastEl = <><div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div><HoverLayer /></>;
 
   if (!isConfigured) return <SetupNotice />;
-  if (phase === 'loading') return <div className="auth"><p className="muted">불러오는 중…</p></div>;
+  if (phase === 'loading') return <div className="auth"><p className="muted"><Loading /></p></div>;
   if (phase === 'signedOut') return <Login invited={route.name === 'join' || Boolean(pendingCode.get())} />;
   if (phase === 'error') return <AuthCard><h1 className="h-big">문제가 생겼어요</h1><p>{error}</p><button type="button" className="btn" onClick={() => location.reload()}>다시 시도</button></AuthCard>;
   if (phase === 'onboarding' && session) return <Onboarding userId={session.user.id} onDone={() => boot(session)} onSignOut={signOut} />;

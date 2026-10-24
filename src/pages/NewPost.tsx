@@ -7,6 +7,7 @@ import { checkCode } from '../lib/checks';
 import { LANGS, langFromCode, langFromFile } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
+import { Dots } from '../components/Motion';
 
 const DRAFT_KEY = 'codeview:draft';
 
@@ -100,7 +101,7 @@ export function NewPost() {
         <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>
       </form>
       <div className="dock"><div className="dock-in">
-        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? '올리는 중…' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
       </div></div>
     </section>
   );

@@ -8,6 +8,7 @@ import { Avatar } from './Avatar';
 import { RichText } from './RichText';
 import { AssistTextarea } from './AssistTextarea';
 import { Icon } from './Icon';
+import { Expand } from './Motion';
 
 const langFence = (id: string) => (id === 'CDS' ? 'cds' : id === 'SQLScript' ? 'sql' : fenceOf(id));
 
@@ -69,8 +70,8 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                 : <button type="button" className="num" tabIndex={-1} aria-hidden="true" onClick={() => setComposer(composer === ln ? null : ln)}>{ln}</button>}
               <div className="txt" data-code="row" dangerouslySetInnerHTML={{ __html: html || ' ' }} />
             </div>
-            {(prob || ts.length > 0 || composer === ln) && (
-              <div className="inl">
+            {/* 비어 있으면 CSS(:empty)로 숨겨요. 늘 그려 둬야 리뷰 입력칸이 닫힐 때도 부드럽게 접혀요. */}
+            <div className="inl">
                 {prob && (
                   <div className={`prob ${prob.sev}`}>
                     <span className="ic">{prob.sev === 'e' ? '오류' : '경고'}</span>
@@ -83,12 +84,13 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                     onReply={(body) => onComment?.(t.line, body, null, t.id) ?? Promise.resolve(false)}
                     onResolve={onResolve} onApply={onApply} meId={meId} onEdit={onEdit} onDelete={onDelete} />
                 ))}
-                {composer === ln && onComment && (
-                  <Composer line={ln} lines={lines} lang={lang} onCancel={() => setComposer(null)}
-                    onSubmit={async (body, s) => { const ok = await onComment(ln, body, s, ts.find((t) => !t.resolved)?.id); if (ok) setComposer(null); return ok; }} />
+                {onComment && (
+                  <Expand open={composer === ln}>
+                    <Composer line={ln} lines={lines} lang={lang} onCancel={() => setComposer(null)}
+                      onSubmit={async (body, s) => { const ok = await onComment(ln, body, s, ts.find((t) => !t.resolved)?.id); if (ok) setComposer(null); return ok; }} />
+                  </Expand>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         );
       })}
@@ -137,13 +139,13 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
                   </span>
                 )}
               </div>
-              {confirmDel === c.id && (
+              <Expand open={confirmDel === c.id}>
                 <div className="cm-del">
                   <span>{thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요.' : '이 리뷰를 지울까요?'}</span>
                   <button type="button" className="btn sm" onClick={() => setConfirmDel(null)}>취소</button>
                   <button type="button" className="btn sm danger-btn" disabled={busy} onClick={async () => { setBusy(true); const ok = await onDelete?.(c.id); setBusy(false); if (ok) setConfirmDel(null); }}>삭제</button>
                 </div>
-              )}
+              </Expand>
               {editing === c.id ? (
                 <form className="cm-edit" onSubmit={(e) => { e.preventDefault(); saveEdit(c.id); }}>
                   <AssistTextarea lang={lang} context={lines.join('\n')} autoFocus value={draft} maxLength={5000} aria-label="리뷰 고치기"
@@ -152,7 +154,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
                       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEdit(c.id); }
                       if (e.key === 'Escape') { e.preventDefault(); setEditing(null); }
                     }} />
-                  {/`/.test(draft) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={draft} lang={lang} /></div>}
+                  <Expand open={/`/.test(draft)}><div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={draft} lang={lang} /></div></Expand>
                   <div className="row-a">
                     {s && <span className="hint">수정 제안 코드는 그대로 남아요</span>}
                     <button type="button" className="btn ghost sm" onClick={() => setEditing(null)}>취소</button>
@@ -194,7 +196,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
             placeholder="답글 달기" aria-label="답글" maxLength={5000} />
           <button className="btn primary sm with-ic" disabled={busy || !reply.trim()} aria-label="답글 보내기"><Icon name="send" />보내기</button>
           <button type="button" className="act-btn ok" onClick={() => onResolve?.(thread.id, true)}><Icon name="check" />해결</button>
-          {/`/.test(reply) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={reply} lang={lang} /></div>}
+          <Expand open={/`/.test(reply)} className="full"><div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={reply} lang={lang} /></div></Expand>
         </form>
       )}
     </div>
@@ -244,9 +246,9 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
       <AssistTextarea lang={lang} context={lines.join('\n')} areaRef={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
         placeholder={`${line}번째 줄 리뷰`}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }} />
-      {/`/.test(body) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={body} lang={lang} /></div>}
+      <Expand open={/`/.test(body)}><div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={body} lang={lang} /></div></Expand>
       <label className="sugg-toggle"><input type="checkbox" checked={suggest} onChange={(e) => setSuggest(e.target.checked)} /> 고친 코드도 제안하기</label>
-      {suggest && (
+      <Expand open={suggest}>
         <div className="sugg-edit">
           <div className="sugg-h">
             <span>{line}번째 줄부터</span>
@@ -257,7 +259,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
           </div>
           <AssistTextarea lang={lang} context={lines.join('\n')} mode="code" className="mono" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} aria-label="제안할 코드" rows={Math.max(2, to.split('\n').length)} />
         </div>
-      )}
+      </Expand>
       <div className="row-a">
         <span className="hint">⌘/Ctrl + Enter로 등록</span>
         <button type="button" className="btn ghost sm" onClick={onCancel}>취소</button>

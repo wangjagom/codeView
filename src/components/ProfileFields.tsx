@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { toAvatar } from '../lib/image';
 import { Avatar } from './Avatar';
+import { Dots } from './Motion';
 
 export const BIO_MAX = 80;
 
@@ -17,7 +18,7 @@ export function ProfileFields({ name, color, avatar, bio, onChange, onError }: {
       <div className="pf-photo">
         <Avatar person={{ id: '', name: name.trim() || '?', color, avatar }} size="xl" />
         <div className="pf-acts">
-          <button type="button" className="btn sm" disabled={busy} onClick={() => fileRef.current?.click()}>{busy ? '줄이는 중…' : avatar ? '사진 바꾸기' : '사진 고르기'}</button>
+          <button type="button" className="btn sm" disabled={busy} onClick={() => fileRef.current?.click()}>{busy ? <>줄이는 중<Dots /></> : avatar ? '사진 바꾸기' : '사진 고르기'}</button>
           {avatar && <button type="button" className="btn ghost sm" onClick={() => onChange({ avatar: null })}>사진 빼기</button>}
           <span className="muted small">정사각형으로 잘라서 작게 저장해요</span>
         </div>

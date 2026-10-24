@@ -4,6 +4,7 @@ import { PALETTE } from '../lib/config';
 import { pendingProfile } from '../lib/store';
 import { ProfileFields } from '../components/ProfileFields';
 import { MIN_PASSWORD, nameProblem, normalizeName, signInWithName, signUpWithName } from '../lib/auth';
+import { Dots, Expand } from '../components/Motion';
 
 export function AuthCard({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
@@ -62,8 +63,7 @@ export function Login({ invited }: { invited?: boolean }) {
         <input id="loginName" value={name} maxLength={20} autoComplete="username" autoCapitalize="off" spellCheck={false} placeholder="예: 준호, dev_kim" onChange={(e) => setName(e.target.value)} />
         <label htmlFor="loginPw" className="lbl">비밀번호</label>
         <input id="loginPw" type="password" value={password} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} placeholder={`${MIN_PASSWORD}자 이상`} onChange={(e) => setPassword(e.target.value)} />
-        {mode === 'up' && (
-          <>
+        <Expand open={mode === 'up'} className="sub-form">
             <label htmlFor="loginPw2" className="lbl">비밀번호 확인</label>
             <input id="loginPw2" type="password" value={password2} autoComplete="new-password" onChange={(e) => setPassword2(e.target.value)} />
             <span className="lbl">아바타 색</span>
@@ -71,12 +71,11 @@ export function Login({ invited }: { invited?: boolean }) {
             <button type="button" className="btn ghost sm opt-toggle" aria-expanded={openProfile} onClick={() => setOpenProfile(!openProfile)}>
               {openProfile ? '사진·소개 접기' : '+ 사진·소개 (선택)'}
             </button>
-            {openProfile && <ProfileFields name={name} color={color} avatar={avatar} bio={bio} onError={setErr}
-              onChange={(p) => { if ('avatar' in p) setAvatar(p.avatar ?? null); if (p.bio !== undefined) setBio(p.bio); }} />}
-          </>
-        )}
+            <Expand open={openProfile}><ProfileFields name={name} color={color} avatar={avatar} bio={bio} onError={setErr}
+              onChange={(p) => { if ('avatar' in p) setAvatar(p.avatar ?? null); if (p.bio !== undefined) setBio(p.bio); }} /></Expand>
+        </Expand>
         {err && <p className="err" role="alert">{err}</p>}
-        <button className="btn primary wide" disabled={busy}>{busy ? '잠시만요…' : mode === 'in' ? '로그인' : '가입하고 시작하기'}</button>
+        <button className="btn primary wide" disabled={busy}>{busy ? <>잠시만요<Dots /></> : mode === 'in' ? '로그인' : '가입하고 시작하기'}</button>
         {mode === 'in'
           ? <p className="small muted center">처음이라면 <button type="button" className="linkish" onClick={() => switchMode('up')}>가입하기</button></p>
           : <p className="small muted center">이미 이름이 있다면 <button type="button" className="linkish" onClick={() => switchMode('in')}>로그인</button></p>}
