@@ -13,6 +13,8 @@ import { STATUS_LABEL, filesOf, isShare, versionFiles, type Post, type Status, t
 import { timeAgo } from '../lib/util';
 import { Loading } from '../components/Motion';
 import { RichText } from '../components/RichText';
+import { MoreMenu } from '../components/MoreMenu';
+import { copyText } from '../lib/util';
 import { download, makeZip, safeName } from '../lib/zip';
 
 export function PostDetail({ id }: { id: string }) {
@@ -137,10 +139,12 @@ export function PostDetail({ id }: { id: string }) {
           </div>
           <div className="code-tools" role="group" aria-label="복사">
             <CopyButton text={() => shownCode} label="코드 복사" onFail={toast} />
-            <CopyButton text={chatText} label="채팅용 복사" icon="chat" onFail={toast} />
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
-            <button type="button" className="act-btn" onClick={saveFile} title={`${fileName}로 저장`}><Icon name="download" />파일 저장</button>
-            <button type="button" className="act-btn" onClick={saveZip} title="모든 파일과 설명(README.md)을 zip으로"><Icon name="zip" />{shownFiles.length > 1 ? `zip 저장 (${shownFiles.length}개)` : 'zip 저장'}</button>
+            <MoreMenu items={[
+              { label: '채팅용 복사', icon: 'chat', hint: '디스코드·카톡에 붙이기 좋게', onSelect: async () => toast((await copyText(chatText())) ? '채팅용으로 복사했어요' : '복사가 막혀 있어요. 코드를 길게 눌러 직접 복사해 주세요') },
+              { label: '파일 저장', icon: 'download', hint: fileName, onSelect: saveFile },
+              { label: shownFiles.length > 1 ? `zip 저장 (${shownFiles.length}개)` : 'zip 저장', icon: 'zip', hint: '모든 파일 + README.md', onSelect: saveZip },
+            ]} />
           </div>
           <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>{share ? '줄 번호를 눌러 질문·의견을 남겨요' : '줄 번호를 눌러 리뷰를 남겨요'}</>}</p>
           <CodeView key={`${fi}-${viewVersion ?? 'now'}`} code={shownCode} lang={curFile.lang} problems={problems} threads={readOnly ? [] : data.threads.filter((t) => (t.file ?? 0) === fi)} person={person}

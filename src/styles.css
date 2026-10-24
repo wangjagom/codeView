@@ -239,6 +239,16 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .act-btn.ok { color: var(--green); background: var(--surface); }
 .act-btn.big { height: 48px; border-radius: 12px; font-size: 15px; }
 .act-btn.white { background: var(--surface); }
+/* ⋯ 더보기 메뉴 */
+.more { position: relative; display: inline-flex; flex: none; }
+.more-btn { width: 40px; padding: 0; }
+.more-btn .ic { width: 18px; height: 18px; }
+.more-btn[aria-expanded="true"] { background: var(--fill-2); }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 25; min-width: 230px; max-width: calc(100vw - 32px); padding: 6px; border-radius: 12px; background: var(--surface); box-shadow: 0 8px 28px rgba(0, 0, 0, .16), 0 0 0 1px var(--line); display: grid; animation: cv-pop-in .14s ease-out both; }
+.menu button { display: grid; grid-template-columns: 20px 1fr; column-gap: 10px; align-items: center; text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: 8px; color: var(--fg); font-size: 14px; font-weight: 600; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--fill); outline: none; }
+.menu button .ic { width: 18px; height: 18px; color: var(--sub); grid-row: span 2; }
+.menu-h { grid-column: 2; font-size: 12px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .act-btn.primary { background: var(--accent); color: var(--accent-fg); }
 .act-btn.primary.done { background: var(--green); color: #fff; }
 .with-ic .ic { width: 16px; height: 16px; }
@@ -386,6 +396,7 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .code-h .txt-btn { white-space: nowrap; padding: 4px; }
 .code-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 12px; }
 .code-tools .act-btn { flex: 1 1 auto; }
+.code-tools .more-btn { flex: none; }
 .code-hint { margin: 0; padding: 0 16px 10px; font-size: 12.5px; color: var(--faint); }
 .rows { font: 13px/1.8 var(--mono); padding: 6px 0 12px; background: var(--code-bg); }
 .row { display: grid; grid-template-columns: 26px 34px minmax(0, 1fr); align-items: start; }
