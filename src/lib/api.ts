@@ -88,6 +88,21 @@ export async function setMyRole(teamId: string, role: Role): Promise<void> {
   must(await supabase.rpc('set_my_role', { p_team: teamId, p_role: role }));
 }
 
+/**
+ * 조원 누구나 과제 하나를 더해요. 띄어쓰기만 다른 같은 과제가 있으면 그대로 둬요.
+ * 새 SQL 전이면 조장·부조장만 예전 방식(목록 통째로 저장)으로 더할 수 있어요.
+ */
+export async function addTeamTask(teamId: string, task: string, current: string[], canManage: boolean): Promise<string[]> {
+  const res = await supabase.rpc('add_team_task', { p_team: teamId, p_task: task });
+  if (noRoleArg(res.error)) {
+    if (!canManage) throw new Error('add_team_task missing');
+    const next = [...current, task.trim()];
+    must(await supabase.from('teams').update({ tasks: next }).eq('id', teamId));
+    return next;
+  }
+  return must(res) as string[];
+}
+
 export async function regenerateInvite(teamId: string): Promise<string> {
   return must(await supabase.rpc('regenerate_invite', { p_team: teamId })) as string;
 }
@@ -197,6 +212,9 @@ export function friendlyError(e: unknown): string {
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 조장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
+  if (/add_team_task missing/.test(msg)) return '조원이 과제를 추가하려면 Supabase에서 새 SQL(20261024030000_add_task.sql)을 먼저 실행해야 해요. 지금은 조장·부조장만 추가할 수 있어요.';
+  if (/too many tasks/.test(msg)) return '과제는 30개까지 만들 수 있어요.';
+  if (/invalid task name/.test(msg)) return '과제 이름은 1~40자로 적어 주세요.';
   if (/comment edit not allowed/.test(msg)) return '리뷰를 고치거나 지우려면 Supabase에서 새 SQL(20261024020000_comment_edit.sql)을 먼저 실행해야 해요.';
   if (/only owners/.test(msg)) return '조장·부조장만 할 수 있어요.';
   if (/owner taken|team_one_owner/.test(msg)) return '이미 조장이 있어요. 다른 직책을 골라 주세요.';

@@ -2,14 +2,17 @@ import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { CodeEditor } from '../components/CodeEditor';
 import { BackBar } from '../components/Layout';
-import { createPost, friendlyError } from '../lib/api';
+import { addTeamTask, createPost, friendlyError } from '../lib/api';
 import { checkCode } from '../lib/checks';
 import { LANGS, langFromCode, langFromFile } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
-import { Dots } from '../components/Motion';
+import { Dots, Expand } from '../components/Motion';
+import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
 
 const DRAFT_KEY = 'codeview:draft';
+
+const NEW_TASK = '__new_task__';
 
 interface Draft { title: string; file: string; lang: string; task: string; code: string; ask: string }
 
@@ -21,7 +24,26 @@ function saveDraft(d: Draft | null) {
 }
 
 export function NewPost() {
-  const { me, team, profiles, refresh, toast } = useStore();
+  const { me, team, isOwner, profiles, refresh, reloadTeams, toast } = useStore();
+  const [newTask, setNewTask] = useState<string | null>(null);
+  const [addingTask, setAddingTask] = useState(false);
+  const similar = newTask ? similarTasks(newTask, team.tasks) : [];
+  const pickTask = (t: string) => { setTask(t); persist({ task: t }); setNewTask(null); };
+  const addTask = async () => {
+    const name = (newTask ?? '').trim();
+    const p = taskProblem(name, team.tasks);
+    // 이미 있는 과제면 그걸 골라요.
+    if (p === '이미 있는 과제예요.') { pickTask(team.tasks.find((t) => normTask(t) === normTask(name))!); return; }
+    if (p) { toast(p); document.getElementById('nNewTask')?.focus(); return; }
+    setAddingTask(true);
+    try {
+      const list = await addTeamTask(team.id, name, team.tasks, isOwner);
+      await reloadTeams(team.id);
+      pickTask(list.find((t) => normTask(t) === normTask(name)) ?? name);
+      toast(`'${name}' 과제를 추가했어요`);
+    } catch (e) { toast(friendlyError(e)); }
+    setAddingTask(false);
+  };
   const d = loadDraft();
   const [title, setTitle] = useState(d?.title ?? '');
   const [file, setFile] = useState(d?.file ?? '');
@@ -64,7 +86,24 @@ export function NewPost() {
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder="예: 삭제 버튼을 누르면 다른 항목이 지워져요" onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
           <div className="field"><label htmlFor="nTask">과제</label>
-            <select id="nTask" value={task} onChange={(ev) => { setTask(ev.target.value); persist({ task: ev.target.value }); }}>{team.tasks.map((t) => <option key={t}>{t}</option>)}</select></div>
+            <select id="nTask" value={newTask !== null ? NEW_TASK : task} onChange={(ev) => {
+              if (ev.target.value === NEW_TASK) { setNewTask(''); requestAnimationFrame(() => document.getElementById('nNewTask')?.focus()); return; }
+              pickTask(ev.target.value);
+            }}>{team.tasks.map((t) => <option key={t}>{t}</option>)}<option value={NEW_TASK}>+ 새 과제 추가…</option></select>
+            <Expand open={newTask !== null}>
+              <div className="new-task">
+                <div className="task-add">
+                  <input id="nNewTask" value={newTask ?? ''} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름" autoComplete="off" aria-label="새 과제 이름"
+                    onChange={(e) => setNewTask(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); addTask(); } if (e.key === 'Escape') setNewTask(null); }} />
+                  <button type="button" className="btn sm primary" disabled={addingTask || !newTask?.trim()} onClick={addTask}>{addingTask ? <>추가 중<Dots /></> : '추가'}</button>
+                  <button type="button" className="btn sm ghost" onClick={() => setNewTask(null)}>취소</button>
+                </div>
+                {similar.length > 0 && (
+                  <p className="task-similar small">혹시 이 과제인가요? {similar.map((t) => <button key={t} type="button" className="chip sm" onClick={() => pickTask(t)}>{t}</button>)}</p>
+                )}
+              </div>
+            </Expand></div>
         </div>
         <div className="two">
           <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder={LANGS.find((l) => l.id === lang)?.sample ?? "zr_report.prog.abap"} onChange={(ev) => { const v = ev.target.value; setFile(v); const g = langFromFile(v); if (g) { setLang(g); setLangAuto(false); } persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>

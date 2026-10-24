@@ -34,6 +34,7 @@
 4. [`20261024000000_profile.sql`](supabase/migrations/20261024000000_profile.sql) — 프로필 사진·한 줄 소개 (선택)
 5. [`20261024010000_team_roles.sql`](supabase/migrations/20261024010000_team_roles.sql) — 조장·부조장·조원 직책 고르기
 6. [`20261024020000_comment_edit.sql`](supabase/migrations/20261024020000_comment_edit.sql) — 내 리뷰 고치기·지우기
+7. [`20261024030000_add_task.sql`](supabase/migrations/20261024030000_add_task.sql) — 코드 올릴 때 조원 누구나 과제 추가
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 
@@ -138,6 +139,7 @@ supabase/migrations/  테이블, RLS 정책, 수정 제안 적용 함수
 | 수정 제안 적용 | 글쓴이 (`apply_suggestion` 함수로만, 코드 직접 수정은 막혀 있어요) |
 | 조 만들기 | 로그인한 누구나 (직책은 직접 골라요) |
 | 조 참여 | 초대 코드를 아는 사람 (`join_team`, 빈 직책만 고를 수 있어요) |
+| 과제 하나 추가 | 같은 조원 누구나 (`add_team_task`, 띄어쓰기만 다른 같은 과제는 막아요) |
 | 내 직책 바꾸기 | 본인 (`set_my_role`, 빈 조장·부조장 자리 또는 조원) |
 | 조 이름·과제 바꾸기, 초대 코드 새로 만들기, 조원 직책 바꾸기·내보내기, 조 삭제 | 조장·부조장 |
 | 조 나가기 | 본인 (마지막 사람이 나가면 조가 지워져요) |

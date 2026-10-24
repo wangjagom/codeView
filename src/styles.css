@@ -60,6 +60,25 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 @media (prefers-reduced-motion: reduce) { .dots i { animation: none !important; opacity: .6; } }
 /* 열고 닫히는 영역 (Motion.tsx의 Expand) */
 .inl:empty { display: none; }
+/* 과제 칩 편집 */
+.tasks-ed { display: grid; gap: 8px; }
+.task-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 34px; align-items: center; }
+.task-chip { display: inline-flex; align-items: center; height: 32px; border-radius: 999px; background: var(--fill); color: var(--fg); font-size: 13.5px; max-width: 100%; cursor: grab; }
+.task-chip.dragging { opacity: .4; }
+.task-chip .tc-name { border: 0; background: none; color: inherit; font: inherit; padding: 0 4px 0 12px; height: 100%; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.task-chip .tc-x { border: 0; background: none; color: var(--faint); width: 28px; height: 100%; border-radius: 0 999px 999px 0; font-size: 16px; line-height: 1; cursor: pointer; }
+.task-chip .tc-x:hover { color: var(--red); }
+.task-chip.editing { background: var(--surface); box-shadow: inset 0 0 0 2px var(--accent); padding: 0 2px; cursor: default; }
+.tasks-ed .task-chip.editing input, .tasks-ed .task-chip.editing input:focus { width: auto; border: 0; border-radius: 0; background: none; font: inherit; color: inherit; padding: 0 4px; min-width: 0; height: 100%; outline: none; box-shadow: none; }
+.task-chip .tc-move { border: 0; background: none; color: var(--accent); width: 26px; height: 26px; border-radius: 50%; font-size: 10px; cursor: pointer; }
+.task-chip .tc-move:disabled { color: var(--disabled); cursor: default; }
+.task-add { display: flex; gap: 6px; align-items: center; }
+.task-add input { flex: 1; min-width: 0; }
+.task-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip.sm { padding: 5px 10px; font-size: 13px; background: var(--fill); }
+.task-similar { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--sub); }
+.task-similar b { font-weight: 600; color: var(--fg); }
+.new-task { display: grid; gap: 8px; padding-top: 8px; }
 .sub-form { display: grid; gap: 10px; }
 .reply > .expand.full { flex-basis: 100%; }
 .list > .expand > .item + .item, .list > .item + .expand > .item:first-child, .list > .expand + .item { border-top: 1px solid var(--line); }

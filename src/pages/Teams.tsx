@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { TaskEditor } from '../components/TaskEditor';
+import { COURSE_TASKS } from '../lib/tasks';
 import { Avatar } from '../components/Avatar';
 import { CopyButton } from '../components/CopyButton';
 import { BackBar, Header, WeekStats, reviewsGivenThisWeek } from '../components/Layout';
@@ -8,12 +10,6 @@ import { inviteUrl, navigate } from '../lib/router';
 import { pendingCode, useStore } from '../lib/store';
 import { ROLE_LABEL, type Role, type Team } from '../lib/types';
 import { Dots, useFlip } from '../components/Motion';
-
-/** 콤마나 줄바꿈으로 구분한 과제 목록을 정리해요. */
-export function parseTasks(text: string): string[] {
-  const list = text.split(/[,\n]/).map((t) => t.trim()).filter(Boolean);
-  return [...new Set(list)].slice(0, 30);
-}
 
 const ROLES: Role[] = ['owner', 'vice', 'member'];
 
@@ -35,7 +31,7 @@ export function RolePicker({ value, onChange, taken = {}, label = '내 직책' }
 /** 조 만들기 + 초대 코드로 참여하기. 첫 화면과 '#/teams' 화면에서 같이 써요. */
 export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, joined: boolean) => void; initialError?: string }) {
   const [name, setName] = useState('');
-  const [tasks, setTasks] = useState('1. UI 프로그래밍, 2. Back-End (ABAP), 3. Clean Core Back-End, 4. Clean Core UI, 5. 프로젝트, 자유 질문');
+  const [tasks, setTasks] = useState<string[]>(COURSE_TASKS);
   const [code, setCode] = useState(() => pendingCode.get() ?? '');
   const [err, setErr] = useState(initialError);
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
@@ -62,7 +58,7 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
   const create = async () => {
     if (!name.trim()) { setErr('조 이름을 적어 주세요.'); document.getElementById('teamName')?.focus(); return; }
     setBusy('create'); setErr('');
-    try { const t = await createTeam(name.trim(), parseTasks(tasks).length ? parseTasks(tasks) : DEFAULT_TASKS, createRole); pendingCode.set(null); onDone(t, false); }
+    try { const t = await createTeam(name.trim(), tasks.length ? tasks : DEFAULT_TASKS, createRole); pendingCode.set(null); onDone(t, false); }
     catch (e) { setErr(friendlyError(e)); setBusy(null); }
   };
   const join = async () => {
@@ -87,8 +83,8 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
         <h2>새 조 만들기</h2>
         <label htmlFor="teamName" className="lbl">조 이름</label>
         <input id="teamName" value={name} maxLength={40} placeholder="예: 프론트엔드 7기 3조" onChange={(e) => setName(e.target.value)} />
-        <label htmlFor="teamTasks" className="lbl">과제 목록 <span className="muted">(쉼표로 구분)</span></label>
-        <input id="teamTasks" value={tasks} onChange={(e) => setTasks(e.target.value)} />
+        <label htmlFor="teamTasks" className="lbl">과제 <span className="muted">(나중에 바꿀 수 있어요)</span></label>
+        <TaskEditor id="teamTasks" value={tasks} onChange={setTasks} />
         <span className="lbl">내 직책 <span className="muted">(조장·부조장은 조를 관리할 수 있어요)</span></span>
         <RolePicker value={createRole} onChange={setCreateRole} />
         <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? <>만드는 중<Dots /></> : '조 만들기'}</button>
@@ -115,7 +111,7 @@ export function TeamsPage() {
 export function TeamSettings({ onTeam }: { onTeam: () => void }) {
   const { me, team, isOwner, profiles, posts, comments, reloadTeams, toast } = useStore();
   const [name, setName] = useState(team.name);
-  const [tasks, setTasks] = useState(team.tasks.join(', '));
+  const [tasks, setTasks] = useState<string[]>(team.tasks);
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const holder = (r: Role) => profiles.find((p) => p.role === r);
@@ -185,11 +181,11 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
         })}
       </div>
 
-      <div className="sec-h"><h2>과제</h2>{isOwner && <button type="button" onClick={() => setEditing(!editing)}>{editing ? '닫기' : '편집'}</button>}</div>
+      <div className="sec-h"><h2>과제</h2>{isOwner && <button type="button" onClick={() => { if (!editing) { setTasks(team.tasks); setName(team.name); } setEditing(!editing); }}>{editing ? '닫기' : '편집'}</button>}</div>
       {editing && isOwner ? (
-        <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); const t = parseTasks(tasks); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: t.length ? t : DEFAULT_TASKS }), '조 정보를 저장했어요')) setEditing(false); }}>
+        <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: tasks.length ? tasks : DEFAULT_TASKS }), '조 정보를 저장했어요')) setEditing(false); }}>
           <div className="field"><label htmlFor="setName">조 이름</label><input className="inp" id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="field"><label htmlFor="setTasks">과제 목록 (쉼표로 구분)</label><textarea className="inp" id="setTasks" rows={3} value={tasks} onChange={(e) => setTasks(e.target.value)} />
+          <div className="field"><label htmlFor="setTasks">과제</label><TaskEditor id="setTasks" value={tasks} onChange={setTasks} />
             <span className="hint">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요.</span></div>
           <button className="btn primary wide">저장</button>
         </form>
