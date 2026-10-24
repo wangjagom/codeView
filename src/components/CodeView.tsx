@@ -167,16 +167,19 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
   const [busy, setBusy] = useState(false);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
-  /** 고른 부분을 `코드` 또는 ```블록```으로 감싸요. 고른 게 없으면 이 줄 코드를 넣어요. */
+  /** 고른 글자를 `코드` 또는 ```블록```으로 감싸요. 고른 게 없으면 빈 틀만 넣고 커서를 그 안에 둬요. */
   const wrap = (block: boolean) => {
     const t = areaRef.current; if (!t) return;
     const a = t.selectionStart, b = t.selectionEnd;
-    const sel = body.slice(a, b) || (block ? lines[line - 1] ?? '' : lines[line - 1]?.trim() ?? '');
-    const fence = langFence(lang);
-    const ins = block ? `${a > 0 && body[a - 1] !== '\n' ? '\n' : ''}\`\`\`${fence}\n${sel}\n\`\`\`\n` : `\`${sel}\``;
-    const next = body.slice(0, a) + ins + body.slice(b);
+    const sel = body.slice(a, b);
+    const lead = block && a > 0 && body[a - 1] !== '\n' ? '\n' : '';
+    const open = block ? `${lead}\`\`\`${langFence(lang)}\n` : '`';
+    const close = block ? '\n```\n' : '`';
+    const next = body.slice(0, a) + open + sel + close + body.slice(b);
     setBody(next);
-    requestAnimationFrame(() => { t.focus(); const pos = a + ins.length; t.setSelectionRange(pos, pos); });
+    // 고른 글자가 있으면 닫는 표시 뒤로, 없으면 빈 틀 안으로 커서를 옮겨요.
+    const pos = sel ? a + open.length + sel.length + close.length : a + open.length;
+    requestAnimationFrame(() => { t.focus(); t.setSelectionRange(pos, pos); });
   };
 
   const changeCount = (n: number) => { setCount(n); setTo(lines.slice(line - 1, line - 1 + n).join('\n')); };
@@ -191,7 +194,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
       <div className="fmt-bar" role="group" aria-label="코드 넣기">
         <button type="button" className="act-btn sm" onClick={() => wrap(false)}><code>`</code>한 줄 코드</button>
         <button type="button" className="act-btn sm" onClick={() => wrap(true)}><code>```</code>코드 블록</button>
-        <span className="hint">고른 글자를 감싸요 · 색은 {langLabel(lang)} 기준</span>
+        <span className="hint">누르고 바로 코드를 쓰거나, 글자를 고른 뒤 누르면 감싸요 · {langLabel(lang)} 색</span>
       </div>
       <textarea ref={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
         placeholder={`${line}번째 줄에 대한 리뷰를 남겨 주세요.\n코드는 \`백틱\`, 여러 줄은 \`\`\`로 감싸면 색이 들어가요.`}
