@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverLayer } from './components/Hover';
-import { Layout, type Filter } from './components/Layout';
+import { ALL, Layout, type Filter } from './components/Layout';
 import { createProfile, friendlyError, getMyProfile, listLikes, listMyBookmarks, setBookmark, setLike, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
@@ -35,7 +35,7 @@ export default function App() {
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [toastMsg, setToastMsg] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(ALL);
   const [task, setTask] = useState('');
   const [sheet, setSheet] = useState(false);
   const toastTimer = useRef<number>(0);
@@ -122,7 +122,7 @@ export default function App() {
   }, [session, pickTeam]);
   const switchTeam = useCallback((id: string) => {
     if (!session || id === teamRef.current) return;
-    setFilter('all'); setTask('');
+    setFilter(ALL); setTask('');
     pickTeam(session.user.id, id).then(() => navigate({ name: 'feed' })).catch((e) => toast(friendlyError(e)));
   }, [session, pickTeam, toast]);
 
@@ -200,7 +200,7 @@ export default function App() {
           {route.name === 'new' && <NewPost />}
           {route.name === 'post' && <PostDetail id={route.id} />}
           {route.name === 'edit' && <EditPost id={route.id} />}
-          {route.name === 'me' && <Me onTeam={() => setSheet(true)} onShowSaved={() => { setFilter('saved'); setTask(''); navigate({ name: 'feed' }); }} />}
+          {route.name === 'me' && <Me onTeam={() => setSheet(true)} onShowAll={(view) => { setFilter({ ...ALL, view }); setTask(''); navigate({ name: 'feed' }); }} />}
           {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
           {route.name === 'teams' && <TeamsPage />}
         </div>

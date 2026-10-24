@@ -6,7 +6,12 @@ import { ROLE_LABEL } from '../lib/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
-export type Filter = 'all' | 'turn' | 'share' | 'saved' | 'mine' | 'done' | 'wait' | 'doing';
+/** 홈 목록 조건: 종류 탭 · 리뷰 상태(리뷰 요청 탭에서만) · 따로 모아 보기(내 차례·저장·내 코드) */
+export type Kind = 'all' | 'review' | 'share';
+export type StatusFilter = 'all' | 'wait' | 'doing' | 'done';
+export type View = 'turn' | 'saved' | 'mine';
+export interface Filter { kind: Kind; status: StatusFilter; view?: View }
+export const ALL: Filter = { kind: 'all', status: 'all' };
 
 /** 하단 탭을 보여 줄 화면 (나머지는 뒤로 가기 + 화면 아래 버튼) */
 const TAB_VIEWS = new Set(['feed', 'join', 'team', 'me']);

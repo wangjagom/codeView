@@ -8,6 +8,7 @@ import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
 import { PostItem } from './Feed';
+import { href } from '../lib/router';
 import { ProfileFields } from '../components/ProfileFields';
 import { Dots, Expand, Loading } from '../components/Motion';
 
@@ -15,7 +16,7 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
   return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
 }
 
-export function Me({ onTeam, onShowSaved }: { onTeam: () => void; onShowSaved: () => void }) {
+export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view: 'mine' | 'saved') => void }) {
   const { me, refresh, toast, signOut } = useStore();
   const [color, setColor] = useState(me.color);
   const [avatar, setAvatar] = useState<string | null>(me.avatar ?? null);
@@ -88,7 +89,7 @@ export function Me({ onTeam, onShowSaved }: { onTeam: () => void; onShowSaved: (
         </div>
       </Expand>
 
-      <SavedPosts onShowAll={onShowSaved} />
+      <MyCode onShowAll={onShowAll} />
 
       <div className="sec-h"><h2>알림</h2><span className="muted small">선택</span></div>
       <div className="card list">
@@ -133,22 +134,30 @@ export function Me({ onTeam, onShowSaved }: { onTeam: () => void; onShowSaved: (
   );
 }
 
-/** 내가 🔖 저장한 코드 (최근 5개, 더 있으면 홈의 저장 칩으로) */
-function SavedPosts({ onShowAll }: { onShowAll: () => void }) {
-  const { posts, likes, bookmarks } = useStore();
+/** 내가 올린 코드 · 🔖 저장한 코드 (최근 5개, 더 있으면 홈에서 모아 봐요) */
+function MyCode({ onShowAll }: { onShowAll: (view: 'mine' | 'saved') => void }) {
+  const { me, posts, likes, bookmarks } = useStore();
+  const [tab, setTab] = useState<'mine' | 'saved'>('mine');
+  const mine = posts.filter((p) => p.author_id === me.id);
   const saved = posts.filter((p) => bookmarks.has(p.id));
-  const shown = saved.slice(0, 5);
+  const list = tab === 'mine' ? mine : saved;
+  const shown = list.slice(0, 5);
   return (
     <>
-      <div className="sec-h"><h2>저장한 코드 {saved.length > 0 && <span className="muted">{saved.length}</span>}</h2>
-        {saved.length > shown.length && <button type="button" onClick={onShowAll}>모두 보기<Icon name="chev" /></button>}
+      <div className="sec-h"><h2>내 코드</h2>
+        {list.length > shown.length && <button type="button" onClick={() => onShowAll(tab)}>모두 보기<Icon name="chev" /></button>}
+      </div>
+      <div className="seg my-tabs" role="tablist" aria-label="내 코드">
+        <button type="button" role="tab" aria-selected={tab === 'mine'} aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>내가 올린 코드 <span className="chip-n">{mine.length}</span></button>
+        <button type="button" role="tab" aria-selected={tab === 'saved'} aria-pressed={tab === 'saved'} onClick={() => setTab('saved')}>저장한 코드 <span className="chip-n">{saved.length}</span></button>
       </div>
       <div className="card list">
-        {shown.length ? shown.map((p) => <PostItem key={p.id} post={p} likes={likes.filter((l) => l.post_id === p.id).length} saved />) : (
+        {shown.length ? shown.map((p) => <PostItem key={p.id} post={p} likes={likes.filter((l) => l.post_id === p.id).length} saved={tab === 'saved'} />) : tab === 'mine' ? (
+          <div className="empty small-empty">아직 올린 코드가 없어요<br /><a href={href({ name: 'new' })}>코드 올리기</a></div>
+        ) : (
           <div className="empty small-empty"><Icon name="bookmark" className="empty-ic" />저장한 코드가 없어요<br /><span className="muted small">글 상세에서 '저장'을 누르면 여기 모여요</span></div>
         )}
       </div>
     </>
   );
 }
-
