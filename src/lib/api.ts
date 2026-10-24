@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Comment, CommentLite, Member, Post, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
+import type { Comment, CommentLite, Member, Post, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
 
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -160,8 +160,11 @@ export interface NewPost {
   reviewer_ids: string[];
 }
 
-export async function createPost(input: NewPost): Promise<Post> {
-  return must(await supabase.from('posts').insert(input).select('*').single());
+export async function createPost(input: NewPost & { kind?: PostKind }): Promise<Post> {
+  // 리뷰 요청은 kind를 보내지 않아요 (DB 기본값). 새 SQL 전에도 그대로 올라가게요.
+  const { kind, ...rest } = input;
+  const row: NewPost & { kind?: PostKind } = kind === 'share' ? { ...rest, kind } : rest;
+  return must(await supabase.from('posts').insert(row as NewPost).select('*').single());
 }
 
 export async function setStatus(postId: string, status: Status): Promise<void> {
@@ -212,6 +215,7 @@ export function friendlyError(e: unknown): string {
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 팀장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '팀장이 한 명은 있어야 해요. 다른 팀원을 먼저 팀장으로 지정해 주세요.';
+  if (/'kind' column|column posts\.kind|kind.*schema cache/i.test(msg)) return '코드 공유 글을 올리려면 Supabase에서 새 SQL(20261024040000_post_kind.sql)을 먼저 실행해야 해요.';
   if (/add_team_task missing/.test(msg)) return '팀원이 과제를 추가하려면 Supabase에서 새 SQL(20261024030000_add_task.sql)을 먼저 실행해야 해요. 지금은 팀장·부팀장만 추가할 수 있어요.';
   if (/too many tasks/.test(msg)) return '과제는 30개까지 만들 수 있어요.';
   if (/invalid task name/.test(msg)) return '과제 이름은 1~40자로 적어 주세요.';

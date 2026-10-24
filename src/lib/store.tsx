@@ -44,7 +44,8 @@ export function makePerson(profiles: Profile[]) {
 
 /** 내가 리뷰어인데 아직 한 번도 댓글을 안 단, 끝나지 않은 글 */
 export function isMyTurn(post: Post, meId: string, comments: CommentLite[]): boolean {
-  return post.author_id !== meId
+  return post.kind !== 'share'
+    && post.author_id !== meId
     && post.reviewer_ids.includes(meId)
     && post.status !== 'done'
     && !comments.some((c) => c.post_id === post.id && c.author_id === meId);

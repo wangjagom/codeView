@@ -35,6 +35,7 @@
 5. [`20261024010000_team_roles.sql`](supabase/migrations/20261024010000_team_roles.sql) — 팀장·부팀장·팀원 직책 고르기
 6. [`20261024020000_comment_edit.sql`](supabase/migrations/20261024020000_comment_edit.sql) — 내 리뷰 고치기·지우기
 7. [`20261024030000_add_task.sql`](supabase/migrations/20261024030000_add_task.sql) — 코드 올릴 때 팀원 누구나 과제 추가
+8. [`20261024040000_post_kind.sql`](supabase/migrations/20261024040000_post_kind.sql) — 글 종류: 리뷰 요청 · 코드 공유
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 

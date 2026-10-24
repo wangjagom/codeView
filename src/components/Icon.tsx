@@ -11,6 +11,8 @@ const PATHS: Record<string, React.ReactElement> = {
   check: <path fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />,
   chat: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A1.5 1.5 0 0 1 4 14.5z" /><path d="M8.5 9.5l-1.5 1.5 1.5 1.5M15.5 9.5l1.5 1.5-1.5 1.5" strokeLinecap="round" /></g>,
   link: <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></g>,
+  download: <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 19h14" /></g>,
+  zip: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" /><path d="M11 3v2h2v2h-2v2h2v2h-2" strokeLinecap="round" /><rect x="10" y="13" width="4" height="4" rx="1" /></g>,
   paste: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><rect x="5" y="5" width="14" height="16" rx="2.5" /><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" /><path d="M9 11h6M9 15h4" strokeLinecap="round" /></g>,
   trash: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13" /></g>,
   comment: <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round"><path d="M5 5h14v10H10l-4 4v-4H5z" /><path d="M12 8v4M10 10h4" strokeLinecap="round" /></g>,

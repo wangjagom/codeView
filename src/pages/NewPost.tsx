@@ -9,12 +9,13 @@ import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import { Dots, Expand } from '../components/Motion';
 import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
+import type { PostKind } from '../lib/types';
 
 const DRAFT_KEY = 'codeview:draft';
 
 const NEW_TASK = '__new_task__';
 
-interface Draft { title: string; file: string; lang: string; task: string; code: string; ask: string }
+interface Draft { title: string; file: string; lang: string; task: string; code: string; ask: string; kind?: PostKind }
 
 function loadDraft(): Draft | null {
   try { const s = localStorage.getItem(DRAFT_KEY); return s ? (JSON.parse(s) as Draft) : null; } catch { return null; }
@@ -54,22 +55,24 @@ export function NewPost() {
   const [code, setCode] = useState(d?.code ?? '');
   const [ask, setAsk] = useState(d?.ask ?? '');
   const [picked, setPicked] = useState<string[]>([]);
+  const [kind, setKind] = useState<PostKind>(d?.kind === 'share' ? 'share' : 'review');
+  const share = kind === 'share';
   const [busy, setBusy] = useState(false);
   const mates = profiles.filter((p) => p.id !== me.id);
   const problems = useMemo(() => checkCode(code, lang), [code, lang]);
   const e = problems.filter((p) => p.sev === 'e').length;
 
-  const persist = (patch: Partial<Draft>) => saveDraft({ title, file, lang, task, code, ask, ...patch });
+  const persist = (patch: Partial<Draft>) => saveDraft({ title, file, lang, task, code, ask, kind, ...patch });
 
   const submit = async () => {
     if (!title.trim()) { toast('제목을 적어 주세요'); document.getElementById('nTitle')?.focus(); return; }
     if (!code.trim()) { toast('코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
     setBusy(true);
     try {
-      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || (LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt'), lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: picked });
+      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || (LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt'), lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: share ? [] : picked, kind });
       saveDraft(null);
       await refresh();
-      toast(picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰를 요청했어요` : '코드를 올렸어요');
+      toast(share ? '코드를 공유했어요' : picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰를 요청했어요` : '코드를 올렸어요');
       navigate({ name: 'post', id: p.id });
     } catch (err) {
       toast(friendlyError(err));
@@ -82,9 +85,15 @@ export function NewPost() {
     <section>
       <BackBar label="닫기" />
       <h1 className="h-big tight">코드 올리기</h1>
+      <div className="seg kind-seg" role="radiogroup" aria-label="글 종류">
+        <button type="button" role="radio" aria-checked={!share} aria-pressed={!share} onClick={() => { setKind('review'); persist({ kind: 'review' }); }}>
+          <b>리뷰 요청</b><small>문제를 같이 봐 주세요</small></button>
+        <button type="button" role="radio" aria-checked={share} aria-pressed={share} onClick={() => { setKind('share'); persist({ kind: 'share' }); }}>
+          <b>코드 공유</b><small>만든 코드를 나눠요</small></button>
+      </div>
       <form className="form" id="newPostForm" onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
         <div className="two">
-          <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder="예: 삭제 버튼을 누르면 다른 항목이 지워져요" onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
+          <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder={share ? '예: 판매 오더 조회 CDS View + Projection' : '예: 삭제 버튼을 누르면 다른 항목이 지워져요'} onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
           <div className="field"><label htmlFor="nTask">과제</label>
             <select id="nTask" value={newTask !== null ? NEW_TASK : task} onChange={(ev) => {
               if (ev.target.value === NEW_TASK) { setNewTask(''); requestAnimationFrame(() => document.getElementById('nNewTask')?.focus()); return; }
@@ -127,8 +136,8 @@ export function NewPost() {
             </div>
           </div>
         </div>
-        <div className="field"><label htmlFor="nAsk">요청 사항 <span className="muted">(선택)</span></label><textarea id="nAsk" rows={2} value={ask} maxLength={2000} placeholder="예: catch에서 500 오류가 안 잡혀요" onChange={(ev) => { setAsk(ev.target.value); persist({ ask: ev.target.value }); }} /></div>
-        <div className="field"><span className="lbl">리뷰어</span>
+        <div className="field"><label htmlFor="nAsk">{share ? '설명' : '요청 사항'} <span className="muted">(선택)</span></label><textarea id="nAsk" rows={share ? 4 : 2} value={ask} maxLength={2000} placeholder={share ? '예: 무엇을 하는 코드인지, 쓰는 법, 참고한 자료' : '예: catch에서 500 오류가 안 잡혀요'} onChange={(ev) => { setAsk(ev.target.value); persist({ ask: ev.target.value }); }} /></div>
+        <Expand open={!share}><div className="field"><span className="lbl">리뷰어</span>
           <div className="picks">
             {mates.length ? mates.map((p) => (
               <button key={p.id} type="button" className="pick" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>
@@ -136,11 +145,11 @@ export function NewPost() {
               </button>
             )) : <span className="muted">다른 팀원이 없어요 · <a href={href({ name: 'team' })}>초대하기</a></span>}
           </div>
-        </div>
+        </div></Expand>
         <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>
       </form>
       <div className="dock"><div className="dock-in">
-        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
       </div></div>
     </section>
   );

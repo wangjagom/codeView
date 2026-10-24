@@ -9,9 +9,11 @@ import { checkCode } from '../lib/checks';
 import { fenceOf, langLabel } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
-import { STATUS_LABEL, type Post, type Status, type Suggestion, type Thread, type Version } from '../lib/types';
+import { STATUS_LABEL, isShare, type Post, type Status, type Suggestion, type Thread, type Version } from '../lib/types';
 import { timeAgo } from '../lib/util';
 import { Loading } from '../components/Motion';
+import { RichText } from '../components/RichText';
+import { download, makeZip, safeName } from '../lib/zip';
 
 export function PostDetail({ id }: { id: string }) {
   const { me, person, tick, refresh, toast } = useStore();
@@ -44,8 +46,9 @@ export function PostDetail({ id }: { id: string }) {
     try { await fn(); await Promise.all([load(), refresh()]); if (ok) toast(ok); return true; }
     catch (err) { toast(friendlyError(err)); return false; }
   };
+  const share = isShare(post);
   const onComment = (line: number, body: string, s: Suggestion | null, threadId?: string) =>
-    run(() => addLineComment(post.id, line, body, s, threadId), '리뷰를 남겼어요');
+    run(() => addLineComment(post.id, line, body, s, threadId), share ? '의견을 남겼어요' : '리뷰를 남겼어요');
   const onResolve = (tid: string, r: boolean) => { run(() => setResolved(tid, r), r ? '대화를 해결로 표시했어요' : '대화를 다시 열었어요'); };
   const onApply = (cid: string) => { run(() => applySuggestion(cid), '제안을 적용했어요'); };
   const onEdit = (cid: string, body: string) => run(() => updateComment(cid, body), '리뷰를 고쳤어요');
@@ -54,8 +57,19 @@ export function PostDetail({ id }: { id: string }) {
 
   const postLink = () => location.href.split('#')[0] + href({ name: 'post', id: post.id });
   const chatText = () => {
-    const summary = `${e || w ? `오류 ${e} · 경고 ${w} · ` : ''}리뷰 ${reviewCount}`;
-    return `**${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${fenceOf(post.lang)}\n${shownCode}\n\`\`\`\n${summary}\n${postLink()}`;
+    const summary = share ? (post.ask ? `${post.ask}\n` : '') + `질문·의견 ${reviewCount}` : `${e || w ? `오류 ${e} · 경고 ${w} · ` : ''}리뷰 ${reviewCount}`;
+    return `**${share ? '[공유] ' : ''}${post.title}** (${post.file_name} · v${post.version})\n\`\`\`${fenceOf(post.lang)}\n${shownCode}\n\`\`\`\n${summary}\n${postLink()}`;
+  };
+  const fileName = safeName(post.file_name, 'code.txt');
+  const saveFile = () => download(fileName, shownCode, 'text/plain;charset=utf-8');
+  const saveZip = () => {
+    const readme = [
+      `# ${post.title}`, '',
+      `- 작성: ${author.name} · ${post.created_at.slice(0, 10)}`,
+      `- 과제: ${post.task}`, `- 언어: ${langLabel(post.lang)}`, `- 버전: v${viewVersion ?? post.version}`, `- 링크: ${postLink()}`,
+      ...(post.ask ? ['', share ? '## 설명' : '## 요청 사항', '', post.ask] : []), '',
+    ].join('\n');
+    download(`${safeName(post.title, 'codeview')}.zip`, makeZip([{ name: fileName, text: shownCode.endsWith('\n') ? shownCode : `${shownCode}\n` }, { name: 'README.md', text: readme }]), 'application/zip');
   };
 
   return (
@@ -63,8 +77,10 @@ export function PostDetail({ id }: { id: string }) {
       <BackBar />
       <div className="meta-row"><Avatar person={author} size="xs" /><b>{author.name}</b><span className="dot" />{timeAgo(post.created_at)}<span className="dot" />{post.task}</div>
       <h1 className="h-big tight">{post.title}</h1>
-      {post.ask && <div className="ask"><span className="lbl">요청 사항</span><span className="body">{post.ask}</span></div>}
-      <div className="card status-card">
+      {post.ask && <div className="ask"><span className="lbl">{share ? '설명' : '요청 사항'}</span><span className="body cm-text"><RichText text={post.ask} lang={post.lang} /></span></div>}
+      {share ? (
+        <div className="card status-card"><div className="status-row"><span className="st share">코드 공유</span><span className="sp" /><span className="muted small">질문·의견 {reviewCount}</span></div></div>
+      ) : <div className="card status-card">
         <div className="status-row">
           <StatusPill status={post.status} />
           {post.reviewer_ids.length > 0 && <span className="revs">리뷰어 {post.reviewer_ids.map((rid) => <Avatar key={rid} person={person(rid)} size="xs" />)}</span>}
@@ -76,7 +92,7 @@ export function PostDetail({ id }: { id: string }) {
             {(Object.keys(STATUS_LABEL) as Status[]).map((s) => <button key={s} type="button" aria-pressed={post.status === s} onClick={() => onStatus(s)}>{STATUS_LABEL[s]}</button>)}
           </div>
         ) : null}
-      </div>
+      </div>}
 
       <div className="d-grid">
         <div className="code">
@@ -90,12 +106,14 @@ export function PostDetail({ id }: { id: string }) {
             <CopyButton text={() => shownCode} label="코드 복사" onFail={toast} />
             <CopyButton text={chatText} label="채팅용 복사" icon="chat" onFail={toast} />
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
+            <button type="button" className="act-btn" onClick={saveFile} title={`${fileName}로 저장`}><Icon name="download" />파일 저장</button>
+            <button type="button" className="act-btn" onClick={saveZip} title="코드와 설명(README.md)을 zip으로"><Icon name="zip" />zip 저장</button>
           </div>
-          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄 번호를 눌러 리뷰를 남겨요</>}</p>
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>{share ? '줄 번호를 눌러 질문·의견을 남겨요' : '줄 번호를 눌러 리뷰를 남겨요'}</>}</p>
           <CodeView code={shownCode} lang={post.lang} problems={problems} threads={readOnly ? [] : data.threads} person={person}
             isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} meId={me.id} onEdit={onEdit} onDelete={onDelete} />
           {!readOnly && data.threads.length === 0 && (
-            <div className="no-review">{isAuthor || !problems[0] ? '리뷰 없음'
+            <div className="no-review">{share ? '질문·의견 없음' : isAuthor || !problems[0] ? '리뷰 없음'
               : <>리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
           )}
         </div>

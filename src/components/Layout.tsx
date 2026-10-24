@@ -6,7 +6,7 @@ import { ROLE_LABEL } from '../lib/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
-export type Filter = 'all' | 'turn' | 'mine' | 'done' | 'wait' | 'doing';
+export type Filter = 'all' | 'turn' | 'share' | 'mine' | 'done' | 'wait' | 'doing';
 
 /** 하단 탭을 보여 줄 화면 (나머지는 뒤로 가기 + 화면 아래 버튼) */
 const TAB_VIEWS = new Set(['feed', 'join', 'team', 'me']);
@@ -105,7 +105,7 @@ export function WeekStats() {
     <>
       <div className="sec-h"><h2>이번 주</h2><span className="muted small">{md(since)} – {md(end)}</span></div>
       <div className="card stats">
-        <div><b>{posts.filter((p) => inWeek(p.created_at)).length}</b><small>리뷰 요청</small></div>
+        <div><b>{posts.filter((p) => p.kind !== 'share' && inWeek(p.created_at)).length}</b><small>리뷰 요청</small></div>
         <div><b>{weekComments.length}</b><small>남긴 리뷰</small></div>
         <div><b>{posts.filter((p) => p.status === 'done' && inWeek(p.updated_at)).length}</b><small>해결</small></div>
       </div>

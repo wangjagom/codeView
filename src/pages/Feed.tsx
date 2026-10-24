@@ -6,10 +6,10 @@ import { Header, type Filter } from '../components/Layout';
 import { checkCode } from '../lib/checks';
 import { href } from '../lib/router';
 import { isMyTurn, useStore } from '../lib/store';
-import { STATUS_LABEL, type Post } from '../lib/types';
+import { STATUS_LABEL, isShare, type Post } from '../lib/types';
 import { timeAgo } from '../lib/util';
 
-const CHIPS: [Filter, string][] = [['all', '전체'], ['turn', '내 차례'], ['wait', '리뷰 대기'], ['doing', '피드백 중'], ['done', '해결됨'], ['mine', '내 코드']];
+const CHIPS: [Filter, string][] = [['all', '전체'], ['turn', '내 차례'], ['share', '공유'], ['wait', '리뷰 대기'], ['doing', '피드백 중'], ['done', '해결됨'], ['mine', '내 코드']];
 
 export function Feed({ filter, task, onFilter, onTask, onTeam }: {
   filter: Filter; task: string; onFilter: (f: Filter) => void; onTask: (t: string) => void; onTeam: () => void;
@@ -19,7 +19,8 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
   const listRef = useFlip<HTMLDivElement>();
   const turns = posts.filter((p) => isMyTurn(p, me.id, comments));
 
-  const match = (p: Post, f: Filter) => f === 'all' || (f === 'turn' && isMyTurn(p, me.id, comments)) || (f === 'mine' && p.author_id === me.id) || p.status === f;
+  const match = (p: Post, f: Filter) => f === 'all' || (f === 'turn' && isMyTurn(p, me.id, comments)) || (f === 'mine' && p.author_id === me.id)
+    || (f === 'share' && isShare(p)) || (!isShare(p) && p.status === f);
   const inTask = posts.filter((p) => !task || p.task === task);
   const list = inTask.filter((p) => match(p, filter));
 
@@ -79,7 +80,7 @@ function PostItem({ post }: { post: Post }) {
         <span className="m">{author.name} · {post.file_name} · {timeAgo(post.created_at)}</span>
         <span className="cnt">{e > 0 && <span className="e">오류 {e}</span>}{w > 0 && <span className="w">경고 {w}</span>}<span>리뷰 {n}</span>{post.version > 1 && <span>v{post.version}</span>}</span>
       </span>
-      <span className={`st ${post.status}`}>{STATUS_LABEL[post.status]}</span>
+      {isShare(post) ? <span className="st share">공유</span> : <span className={`st ${post.status}`}>{STATUS_LABEL[post.status]}</span>}
     </a>
   );
 }

@@ -44,7 +44,13 @@ export interface Post {
   reviewer_ids: string[];
   created_at: string;
   updated_at: string;
+  /** 글 종류. 새 SQL 전에 올린 글에는 없어서 비어 있으면 리뷰 요청이에요. */
+  kind?: PostKind;
 }
+
+/** review = 리뷰 요청 (상태·리뷰어가 있어요), share = 코드 공유 (설명과 질문·의견만) */
+export type PostKind = 'review' | 'share';
+export const isShare = (p: Pick<Post, 'kind'>) => p.kind === 'share';
 
 /** 줄 번호는 1부터 시작해요. original은 제안을 만든 시점의 줄 내용이에요. */
 export interface Suggestion {
