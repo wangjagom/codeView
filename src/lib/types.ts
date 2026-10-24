@@ -46,7 +46,22 @@ export interface Post {
   updated_at: string;
   /** 글 종류. 새 SQL 전에 올린 글에는 없어서 비어 있으면 리뷰 요청이에요. */
   kind?: PostKind;
+  /** 파일들. 첫 파일은 file_name·lang·code와 같아요. 새 SQL 전 글에는 없어요. */
+  files?: PostFile[] | null;
 }
+
+export interface PostFile { name: string; lang: string; code: string }
+
+/** 글의 파일 목록 (예전 글은 파일 하나) */
+export const filesOf = (p: Pick<Post, 'files' | 'file_name' | 'lang' | 'code'>): PostFile[] =>
+  p.files?.length ? p.files : [{ name: p.file_name, lang: p.lang, code: p.code }];
+
+/** 그 버전의 파일 목록 (예전 버전은 첫 파일 코드만 있어요) */
+export const versionFiles = (v: Pick<Version, 'files' | 'code'>, p: Post): PostFile[] => {
+  if (v.files?.length) return v.files;
+  const [first, ...rest] = filesOf(p);
+  return [{ ...first, code: v.code }, ...rest];
+};
 
 /** review = 리뷰 요청 (상태·리뷰어가 있어요), share = 코드 공유 (설명과 질문·의견만) */
 export type PostKind = 'review' | 'share';
@@ -81,11 +96,14 @@ export interface Thread {
   created_by: string;
   created_at: string;
   comments: Comment[];
+  /** 몇 번째 파일인지 (0부터). 예전 리뷰에는 없어서 첫 파일이에요. */
+  file?: number;
 }
 
 export interface Version {
   version: number;
   code: string;
+  files?: PostFile[] | null;
   note: string;
   created_by: string;
   created_at: string;

@@ -535,3 +535,19 @@ export function fillTemplate(t: Template, file = ''): { body: string; file: stri
   const name = templateName(t, file);
   return { body: t.body.replace(/%NAME%/g, name).replace(/%NS%/g, NS), file: t.file.replace('%NAME%', name) };
 }
+
+/** 여러 파일을 한 번에 넣는 기본 세트 (한 글에 여러 파일) */
+export const TEMPLATE_SETS: { id: string; label: string; detail: string; ids: string[] }[] = [
+  { id: 'ui5-app', label: 'UI5 기본 앱', detail: 'BAS 생성기 파일 9개', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-css'] },
+  { id: 'rap', label: 'RAP 기본 (CDS)', detail: 'Root·Projection·Metadata·Service', ids: ['cds-root-view-entity', 'cds-projection', 'cds-metadata-ext', 'cds-service'] },
+];
+
+/** 세트의 파일들 (커서 표시 $0은 빼요) */
+export function templateSetFiles(setId: string): { name: string; lang: string; code: string }[] {
+  const set = TEMPLATE_SETS.find((s) => s.id === setId);
+  if (!set) return [];
+  return set.ids.map((id) => TEMPLATES.find((t) => t.id === id)!).map((t) => {
+    const f = fillTemplate(t);
+    return { name: f.file, lang: t.lang, code: f.body.replace(/\$0/g, '') };
+  });
+}

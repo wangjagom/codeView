@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { CodeEditor } from '../components/CodeEditor';
 import { BackBar } from '../components/Layout';
@@ -7,15 +7,21 @@ import { checkCode } from '../lib/checks';
 import { LANGS, langFromCode, langFromFile } from '../lib/langs';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
-import { Dots, Expand } from '../components/Motion';
+import { Dots, Expand, useFlip } from '../components/Motion';
 import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
+import { TEMPLATE_SETS, templateSetFiles } from '../lib/templates';
 import type { PostKind } from '../lib/types';
 
 const DRAFT_KEY = 'codeview:draft';
-
 const NEW_TASK = '__new_task__';
+const MAX_FILES = 10;
 
-interface Draft { title: string; file: string; lang: string; task: string; code: string; ask: string; kind?: PostKind }
+/** 올리는 중인 파일 하나. langAuto면 파일 이름·코드를 보고 언어를 골라요. */
+interface DraftFile { id: string; name: string; lang: string; code: string; langAuto: boolean }
+interface Draft { title: string; task: string; ask: string; kind?: PostKind; files?: DraftFile[]; file?: string; lang?: string; code?: string }
+
+let fileSeq = 0;
+const newFile = (lang = 'ABAP', patch: Partial<DraftFile> = {}): DraftFile => ({ id: `f${Date.now().toString(36)}${fileSeq++}`, name: '', lang, code: '', langAuto: true, ...patch });
 
 function loadDraft(): Draft | null {
   try { const s = localStorage.getItem(DRAFT_KEY); return s ? (JSON.parse(s) as Draft) : null; } catch { return null; }
@@ -23,12 +29,69 @@ function loadDraft(): Draft | null {
 function saveDraft(d: Draft | null) {
   try { if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(DRAFT_KEY); } catch { /* 저장 못 해도 괜찮아요 */ }
 }
+/** 예전(파일 하나) 임시 저장도 그대로 불러와요. */
+function draftFiles(d: Draft | null): DraftFile[] {
+  if (d?.files?.length) return d.files.map((f) => ({ ...f, lang: LANGS.some((l) => l.id === f.lang) ? f.lang : 'ABAP' }));
+  return [newFile(d?.lang && LANGS.some((l) => l.id === d.lang) ? d.lang : 'ABAP', { name: d?.file ?? '', code: d?.code ?? '', langAuto: !d?.lang })];
+}
+const sampleOf = (lang: string) => LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt';
 
 export function NewPost() {
   const { me, team, isOwner, profiles, refresh, reloadTeams, toast } = useStore();
+  const d = loadDraft();
+  const [title, setTitle] = useState(d?.title ?? '');
+  const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : team.tasks[0] ?? '자유 질문');
+  const [ask, setAsk] = useState(d?.ask ?? '');
+  const [kind, setKind] = useState<PostKind>(d?.kind === 'share' ? 'share' : 'review');
+  const [files, setFiles] = useState<DraftFile[]>(() => draftFiles(d));
+  const [active, setActive] = useState(0);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const [newTask, setNewTask] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
+  const tabsRef = useFlip<HTMLDivElement>();
+  // 파일이 많아 탭이 옆으로 넘치면 고른 탭이 보이게 옮겨요.
+  useEffect(() => { tabsRef.current?.querySelector('.ftab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [active, tabsRef]);
+  const share = kind === 'share';
+  const mates = profiles.filter((p) => p.id !== me.id);
+  const cur = files[Math.min(active, files.length - 1)];
+  const allProblems = useMemo(() => files.map((f) => checkCode(f.code, f.lang)), [files]);
+  const problems = allProblems[Math.min(active, files.length - 1)] ?? [];
+  const e = problems.filter((p) => p.sev === 'e').length;
   const similar = newTask ? similarTasks(newTask, team.tasks) : [];
+
+  const persist = (patch: Partial<Draft>) => saveDraft({ title, task, ask, kind, files, ...patch });
+  /** 지금 파일 고치기 */
+  const patchFile = (patch: Partial<DraftFile>) => {
+    const next = files.map((f, i) => (i === active ? { ...f, ...patch } : f));
+    setFiles(next); persist({ files: next });
+  };
+  const setAllFiles = (next: DraftFile[], at = 0) => { setFiles(next); setActive(at); persist({ files: next }); };
+
+  const addFile = () => {
+    if (files.length >= MAX_FILES) { toast(`파일은 ${MAX_FILES}개까지 올릴 수 있어요`); return; }
+    setAllFiles([...files, newFile(cur.lang)], files.length);
+    requestAnimationFrame(() => document.getElementById('nFile')?.focus());
+  };
+  const removeFile = (i: number) => {
+    const f = files[i];
+    if (f.code.trim() && confirmRemove !== f.id) { setConfirmRemove(f.id); return; }
+    setConfirmRemove(null);
+    const next = files.filter((_, j) => j !== i);
+    setAllFiles(next.length ? next : [newFile()], Math.max(0, Math.min(active > i ? active - 1 : active, next.length - 1)));
+  };
+  const applySet = (setId: string) => {
+    const set = templateSetFiles(setId);
+    // 비어 있는 파일은 세트로 바꾸고, 코드가 있는 파일은 그대로 앞에 둬요.
+    const kept = files.filter((f) => f.code.trim());
+    const room = MAX_FILES - kept.length;
+    const taken = new Set(kept.map((f) => f.name.trim().toLowerCase()));
+    const added = set.filter((f) => !taken.has(f.name.toLowerCase())).slice(0, room).map((f) => newFile(f.lang, { ...f, langAuto: false }));
+    setAllFiles([...kept, ...added], kept.length);
+    toast(`${TEMPLATE_SETS.find((s) => s.id === setId)?.label} 파일 ${added.length}개를 넣었어요`);
+  };
+
   const pickTask = (t: string) => { setTask(t); persist({ task: t }); setNewTask(null); };
   const addTask = async () => {
     const name = (newTask ?? '').trim();
@@ -42,34 +105,22 @@ export function NewPost() {
       await reloadTeams(team.id);
       pickTask(list.find((t) => normTask(t) === normTask(name)) ?? name);
       toast(`'${name}' 과제를 추가했어요`);
-    } catch (e) { toast(friendlyError(e)); }
+    } catch (err) { toast(friendlyError(err)); }
     setAddingTask(false);
   };
-  const d = loadDraft();
-  const [title, setTitle] = useState(d?.title ?? '');
-  const [file, setFile] = useState(d?.file ?? '');
-  const [lang, setLang] = useState(d?.lang && LANGS.some((l) => l.id === d.lang) ? d.lang : 'ABAP');
-  // 언어를 직접 고르기 전까지는 파일 이름이나 코드를 보고 자동으로 골라요.
-  const [langAuto, setLangAuto] = useState(!d?.lang);
-  const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : team.tasks[0] ?? '자유 질문');
-  const [code, setCode] = useState(d?.code ?? '');
-  const [ask, setAsk] = useState(d?.ask ?? '');
-  const [picked, setPicked] = useState<string[]>([]);
-  const [kind, setKind] = useState<PostKind>(d?.kind === 'share' ? 'share' : 'review');
-  const share = kind === 'share';
-  const [busy, setBusy] = useState(false);
-  const mates = profiles.filter((p) => p.id !== me.id);
-  const problems = useMemo(() => checkCode(code, lang), [code, lang]);
-  const e = problems.filter((p) => p.sev === 'e').length;
-
-  const persist = (patch: Partial<Draft>) => saveDraft({ title, file, lang, task, code, ask, kind, ...patch });
 
   const submit = async () => {
     if (!title.trim()) { toast('제목을 적어 주세요'); document.getElementById('nTitle')?.focus(); return; }
-    if (!code.trim()) { toast('코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
+    // 여러 파일이면 비어 있는 파일·겹치는 이름을 먼저 알려 줘요.
+    const ready = files.map((f) => ({ name: f.name.trim() || sampleOf(f.lang), lang: f.lang, code: f.code.replace(/\s+$/, '') }));
+    const empty = ready.findIndex((f) => !f.code.trim());
+    if (empty >= 0) { setActive(empty); toast(files.length > 1 ? `${empty + 1}번째 파일이 비어 있어요. 코드를 넣거나 파일을 빼 주세요` : '코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
+    const dup = ready.findIndex((f, i) => ready.findIndex((g) => g.name.toLowerCase() === f.name.toLowerCase()) !== i);
+    if (dup >= 0) { setActive(dup); toast(`파일 이름 '${ready[dup].name}'이(가) 겹쳐요`); document.getElementById('nFile')?.focus(); return; }
     setBusy(true);
     try {
-      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: file.trim() || (LANGS.find((l) => l.id === lang)?.sample ?? 'code.txt'), lang, task, ask: ask.trim(), code: code.replace(/\s+$/, ''), reviewer_ids: share ? [] : picked, kind });
+      const first = ready[0];
+      const p = await createPost({ team_id: team.id, title: title.trim(), file_name: first.name, lang: first.lang, task, ask: ask.trim(), code: first.code, reviewer_ids: share ? [] : picked, kind, files: ready });
       saveDraft(null);
       await refresh();
       toast(share ? '코드를 공유했어요' : picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰를 요청했어요` : '코드를 올렸어요');
@@ -80,6 +131,8 @@ export function NewPost() {
       setBusy(false);
     }
   };
+
+  const allEmpty = files.every((f) => !f.code.trim());
 
   return (
     <section>
@@ -103,8 +156,8 @@ export function NewPost() {
               <div className="new-task">
                 <div className="task-add">
                   <input id="nNewTask" value={newTask ?? ''} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름" autoComplete="off" aria-label="새 과제 이름"
-                    onChange={(e) => setNewTask(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); addTask(); } if (e.key === 'Escape') setNewTask(null); }} />
+                    onChange={(ev) => setNewTask(ev.target.value)}
+                    onKeyDown={(ev) => { if (ev.key === 'Enter' && !ev.nativeEvent.isComposing) { ev.preventDefault(); addTask(); } if (ev.key === 'Escape') setNewTask(null); }} />
                   <button type="button" className="btn sm primary" disabled={addingTask || !newTask?.trim()} onClick={addTask}>{addingTask ? <>추가 중<Dots /></> : '추가'}</button>
                   <button type="button" className="btn sm ghost" onClick={() => setNewTask(null)}>취소</button>
                 </div>
@@ -114,20 +167,46 @@ export function NewPost() {
               </div>
             </Expand></div>
         </div>
+
+        <div className="field">
+          <span className="lbl">파일 <span className="muted">({files.length}/{MAX_FILES})</span></span>
+          <div className="file-tabs" role="tablist" aria-label="파일" ref={tabsRef}>
+            {files.map((f, i) => {
+              const ps = allProblems[i] ?? [];
+              const pe = ps.filter((p) => p.sev === 'e').length;
+              return (
+                <span key={f.id} data-flip={f.id} className={`ftab ${i === active ? 'on' : ''} ${confirmRemove === f.id ? 'confirm' : ''}`}>
+                  <button type="button" role="tab" aria-selected={i === active} className="ftab-name" onClick={() => { setActive(i); setConfirmRemove(null); }}>
+                    {f.name.trim() || `파일 ${i + 1}`}
+                    {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
+                  </button>
+                  {files.length > 1 && <button type="button" className="ftab-x" aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? '빼기?' : '×'}</button>}
+                </span>
+              );
+            })}
+            {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
+          </div>
+          {allEmpty && (
+            <div className="set-row"><span className="muted small">여러 파일 한 번에:</span>
+              {TEMPLATE_SETS.map((s) => <button key={s.id} type="button" className="chip sm" title={s.detail} onClick={() => applySet(s.id)}>{s.label}</button>)}
+            </div>
+          )}
+        </div>
+
         <div className="two">
-          <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder={LANGS.find((l) => l.id === lang)?.sample ?? "zr_report.prog.abap"} onChange={(ev) => { const v = ev.target.value; setFile(v); const g = langFromFile(v); if (g) { setLang(g); setLangAuto(false); } persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>
+          <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={cur.name} maxLength={80} placeholder={sampleOf(cur.lang)} onChange={(ev) => { const v = ev.target.value; const g = langFromFile(v); patchFile({ name: v, ...(g ? { lang: g, langAuto: false } : {}) }); }} /></div>
           <div className="field"><label htmlFor="nLang">언어</label>
-            <select id="nLang" value={lang} onChange={(ev) => { setLang(ev.target.value); setLangAuto(false); persist({ lang: ev.target.value }); }}>{LANGS.map((l) => <option key={l.id} value={l.id}>{l.label} · {l.course}</option>)}</select>
-            {langAuto && code.trim() && <span className="muted small">자동 감지</span>}</div>
+            <select id="nLang" value={cur.lang} onChange={(ev) => patchFile({ lang: ev.target.value, langAuto: false })}>{LANGS.map((l) => <option key={l.id} value={l.id}>{l.label} · {l.course}</option>)}</select>
+            {cur.langAuto && cur.code.trim() && <span className="muted small">자동 감지</span>}</div>
         </div>
         <div className="field">
           <label htmlFor="nCode">코드</label>
           <div className="paste">
-            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="코드 붙여넣기 (Ctrl/⌘ + V)" onToast={toast}
-              fileName={file} onTemplate={(f, l, c) => { const nf = file.trim() ? file : f; setFile(nf); setLang(l); setLangAuto(false); persist({ file: nf, lang: l, code: c }); }}
-              onChange={(v) => { setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }} />
+            <CodeEditor key={cur.id} id="nCode" value={cur.code} lang={cur.lang} problems={problems} placeholder="코드 붙여넣기 (Ctrl/⌘ + V)" onToast={toast}
+              fileName={cur.name} onTemplate={(f, l, c) => patchFile({ name: cur.name.trim() ? cur.name : f, lang: l, code: c, langAuto: false })}
+              onChange={(v) => { const g = cur.langAuto ? langFromCode(v) : null; patchFile({ code: v, ...(g ? { lang: g } : {}) }); }} />
             <div className="check" aria-live="polite">
-              {!code.trim() ? <span className="muted">붙여넣으면 바로 검사해요</span>
+              {!cur.code.trim() ? <span className="muted">붙여넣으면 바로 검사해요</span>
                 : !problems.length ? <span className="okmsg">✓ 검사 통과</span>
                 : <>
                   <div className="check-h">검사 결과 {e > 0 && <span className="pill e">오류 {e}</span>}{problems.length - e > 0 && <span className="pill w">경고 {problems.length - e}</span>}</div>
@@ -149,7 +228,7 @@ export function NewPost() {
         <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>
       </form>
       <div className="dock"><div className="dock-in">
-        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>올리는 중<Dots /></> : `${share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}${files.length > 1 ? ` · 파일 ${files.length}개` : ''}`}</button>
       </div></div>
     </section>
   );

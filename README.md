@@ -36,6 +36,7 @@
 6. [`20261024020000_comment_edit.sql`](supabase/migrations/20261024020000_comment_edit.sql) — 내 리뷰 고치기·지우기
 7. [`20261024030000_add_task.sql`](supabase/migrations/20261024030000_add_task.sql) — 코드 올릴 때 팀원 누구나 과제 추가
 8. [`20261024040000_post_kind.sql`](supabase/migrations/20261024040000_post_kind.sql) — 글 종류: 리뷰 요청 · 코드 공유
+9. [`20261024050000_multi_file.sql`](supabase/migrations/20261024050000_multi_file.sql) — 한 글에 여러 파일 (최대 10개)
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 

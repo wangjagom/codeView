@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Comment, CommentLite, Member, Post, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
+import type { Comment, CommentLite, Member, Post, PostFile, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
 
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -139,7 +139,7 @@ export async function getPost(id: string): Promise<{ post: Post; threads: Thread
     supabase.from('posts').select('*').eq('id', id).single(),
     supabase.from('threads').select('*').eq('post_id', id).order('line'),
     supabase.from('comments').select('*').eq('post_id', id).order('created_at'),
-    supabase.from('post_versions').select('version, code, note, created_by, created_at').eq('post_id', id).order('version'),
+    supabase.from('post_versions').select('*').eq('post_id', id).order('version'),
   ]);
   const cs = must(comments) as Comment[];
   return {
@@ -160,10 +160,10 @@ export interface NewPost {
   reviewer_ids: string[];
 }
 
-export async function createPost(input: NewPost & { kind?: PostKind }): Promise<Post> {
-  // 리뷰 요청은 kind를 보내지 않아요 (DB 기본값). 새 SQL 전에도 그대로 올라가게요.
-  const { kind, ...rest } = input;
-  const row: NewPost & { kind?: PostKind } = kind === 'share' ? { ...rest, kind } : rest;
+export async function createPost(input: NewPost & { kind?: PostKind; files?: PostFile[] }): Promise<Post> {
+  // 리뷰 요청·파일 하나면 kind·files를 보내지 않아요 (DB 기본값). 새 SQL 전에도 그대로 올라가게요.
+  const { kind, files, ...rest } = input;
+  const row: NewPost & { kind?: PostKind; files?: PostFile[] } = { ...rest, ...(kind === 'share' ? { kind } : {}), ...(files && files.length > 1 ? { files } : {}) };
   return must(await supabase.from('posts').insert(row as NewPost).select('*').single());
 }
 
@@ -176,10 +176,10 @@ export async function deletePost(postId: string): Promise<void> {
 }
 
 /** 그 줄에 스레드가 없으면 만들고 첫 댓글을 달아요. */
-export async function addLineComment(postId: string, line: number, body: string, suggestion: Suggestion | null, threadId?: string): Promise<void> {
+export async function addLineComment(postId: string, line: number, body: string, suggestion: Suggestion | null, threadId?: string, file = 0): Promise<void> {
   let tid = threadId;
   if (!tid) {
-    const t = must(await supabase.from('threads').insert({ post_id: postId, line }).select('id').single()) as { id: string };
+    const t = must(await supabase.from('threads').insert(file ? { post_id: postId, line, file } : { post_id: postId, line }).select('id').single()) as { id: string };
     tid = t.id;
   }
   must(await supabase.from('comments').insert({ thread_id: tid, post_id: postId, body, suggestion }));
@@ -215,6 +215,9 @@ export function friendlyError(e: unknown): string {
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 팀장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '팀장이 한 명은 있어야 해요. 다른 팀원을 먼저 팀장으로 지정해 주세요.';
+  if (/'files' column|column posts\.files|'file' column|column threads\.file|posts_files_valid/i.test(msg)) return /posts_files_valid/.test(msg)
+    ? '파일 이름이 겹치거나 비어 있는 파일이 있어요. 확인해 주세요.'
+    : '파일 여러 개를 올리려면 Supabase에서 새 SQL(20261024050000_multi_file.sql)을 먼저 실행해야 해요.';
   if (/'kind' column|column posts\.kind|kind.*schema cache/i.test(msg)) return '코드 공유 글을 올리려면 Supabase에서 새 SQL(20261024040000_post_kind.sql)을 먼저 실행해야 해요.';
   if (/add_team_task missing/.test(msg)) return '팀원이 과제를 추가하려면 Supabase에서 새 SQL(20261024030000_add_task.sql)을 먼저 실행해야 해요. 지금은 팀장·부팀장만 추가할 수 있어요.';
   if (/too many tasks/.test(msg)) return '과제는 30개까지 만들 수 있어요.';

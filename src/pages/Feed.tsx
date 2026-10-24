@@ -6,7 +6,7 @@ import { Header, type Filter } from '../components/Layout';
 import { checkCode } from '../lib/checks';
 import { href } from '../lib/router';
 import { isMyTurn, useStore } from '../lib/store';
-import { STATUS_LABEL, isShare, type Post } from '../lib/types';
+import { STATUS_LABEL, filesOf, isShare, type Post } from '../lib/types';
 import { timeAgo } from '../lib/util';
 
 const CHIPS: [Filter, string][] = [['all', '전체'], ['turn', '내 차례'], ['share', '공유'], ['wait', '리뷰 대기'], ['doing', '피드백 중'], ['done', '해결됨'], ['mine', '내 코드']];
@@ -68,7 +68,8 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
 
 function PostItem({ post }: { post: Post }) {
   const { comments, person } = useStore();
-  const probs = checkCode(post.code, post.lang);
+  const files = filesOf(post);
+  const probs = files.flatMap((f) => checkCode(f.code, f.lang));
   const e = probs.filter((x) => x.sev === 'e').length, w = probs.length - e;
   const n = comments.filter((c) => c.post_id === post.id).length;
   const author = person(post.author_id);
@@ -77,7 +78,7 @@ function PostItem({ post }: { post: Post }) {
       <Avatar person={author} size="lg" />
       <span className="body">
         <span className="t">{post.title}</span>
-        <span className="m">{author.name} · {post.file_name} · {timeAgo(post.created_at)}</span>
+        <span className="m">{author.name} · {post.file_name}{files.length > 1 ? ` 외 ${files.length - 1}개` : ''} · {timeAgo(post.created_at)}</span>
         <span className="cnt">{e > 0 && <span className="e">오류 {e}</span>}{w > 0 && <span className="w">경고 {w}</span>}<span>리뷰 {n}</span>{post.version > 1 && <span>v{post.version}</span>}</span>
       </span>
       {isShare(post) ? <span className="st share">공유</span> : <span className={`st ${post.status}`}>{STATUS_LABEL[post.status]}</span>}

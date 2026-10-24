@@ -79,6 +79,21 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 .task-similar { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--sub); }
 .task-similar b { font-weight: 600; color: var(--fg); }
 .new-task { display: grid; gap: 8px; padding-top: 8px; }
+/* 파일 탭 (한 글에 여러 파일) */
+.file-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; }
+.file-tabs::-webkit-scrollbar { display: none; }
+.ftab { flex: none; display: inline-flex; align-items: center; height: 34px; border-radius: 9px; background: var(--fill); color: var(--sub); font: 500 13px var(--mono); }
+.ftab.on { background: var(--fg); color: var(--surface); }
+.ftab.confirm { background: var(--red-soft); color: var(--red); }
+.ftab-name { display: inline-flex; align-items: center; gap: 6px; height: 100%; border: 0; background: none; color: inherit; font: inherit; padding: 0 12px; cursor: pointer; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.ftab-x { border: 0; background: none; color: inherit; opacity: .6; height: 100%; padding: 0 10px 0 2px; font: 600 13px var(--font); cursor: pointer; }
+.ftab-x:hover { opacity: 1; }
+.ftab.add { border: 1px dashed var(--line); background: transparent; color: var(--accent); padding: 0 12px; font: 600 13px var(--font); cursor: pointer; }
+.ftab-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.ftab-dot.e { background: var(--red); } .ftab-dot.w { background: var(--orange); }
+.ftab-n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font: 700 11px/18px var(--font); text-align: center; }
+.file-tabs.view { padding: 12px 16px 2px; }
+.set-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .sub-form { display: grid; gap: 10px; }
 .reply > .expand.full { flex-basis: 100%; }
 .list > .expand > .item + .item, .list > .item + .expand > .item:first-child, .list > .expand + .item { border-top: 1px solid var(--line); }
