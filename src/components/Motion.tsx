@@ -32,18 +32,22 @@ export function Expand({ open, children, className = '' }: { open: boolean; chil
     // 처음부터 열려 있던 건 (화면을 열 때) 움직이지 않아요. 열고 닫을 때만 움직여요.
     if (!mounted.current) { mounted.current = true; if (el) return; }
     if (!el) return;
+    const from = el.getBoundingClientRect().height; // 열리거나 닫히는 중이면 지금 높이에서 이어가요
     anim.current?.cancel();
+    el.style.height = ''; el.style.opacity = '';
     if (reducedMotion() || !el.animate) { if (!open) setShown(false); return; }
-    const h = el.scrollHeight;
     el.style.overflow = 'hidden';
     const frames = open
-      ? [{ height: '0px', opacity: 0 }, { height: `${h}px`, opacity: 1 }]
-      : [{ height: `${el.offsetHeight}px`, opacity: 1 }, { height: '0px', opacity: 0 }];
+      ? [{ height: `${anim.current ? from : 0}px`, opacity: anim.current ? 1 : 0 }, { height: `${el.scrollHeight}px`, opacity: 1 }]
+      : [{ height: `${from}px`, opacity: 1 }, { height: '0px', opacity: 0 }];
     const a = el.animate(frames, { duration: open ? 220 : 170, easing: open ? EASE : 'ease-in' });
     anim.current = a;
     a.onfinish = () => {
-      el.style.overflow = '';
-      if (!open) setShown(false);
+      anim.current = null;
+      if (open) { el.style.overflow = ''; return; }
+      // 끝난 뒤 한 프레임이라도 원래 높이로 돌아가면 깜빡여요. 접힌 채로 두고 내용을 없애요.
+      el.style.height = '0px'; el.style.opacity = '0';
+      setShown(false);
     };
   }, [open, shown]);
 
