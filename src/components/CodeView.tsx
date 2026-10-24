@@ -22,9 +22,13 @@ interface Props {
   onComment?: (line: number, body: string, suggestion: Suggestion | null, threadId?: string) => Promise<boolean>;
   onResolve?: (threadId: string, resolved: boolean) => void;
   onApply?: (commentId: string) => void;
+  /** 내 아이디 (내 리뷰만 고치고 지울 수 있어요) */
+  meId?: string;
+  onEdit?: (commentId: string, body: string) => Promise<boolean>;
+  onDelete?: (commentId: string) => Promise<boolean>;
 }
 
-export function CodeView({ code, lang, problems, threads, person, isAuthor, readOnly, onComment, onResolve, onApply }: Props) {
+export function CodeView({ code, lang, problems, threads, person, isAuthor, readOnly, onComment, onResolve, onApply, meId, onEdit, onDelete }: Props) {
   const lines = useMemo(() => code.split('\n'), [code]);
   const [composer, setComposer] = useState<number | null>(null);
 
@@ -77,7 +81,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                 {ts.map((t) => (
                   <ThreadBox key={t.id} thread={t} lines={lines} lang={lang} person={person} isAuthor={isAuthor} readOnly={readOnly}
                     onReply={(body) => onComment?.(t.line, body, null, t.id) ?? Promise.resolve(false)}
-                    onResolve={onResolve} onApply={onApply} />
+                    onResolve={onResolve} onApply={onApply} meId={meId} onEdit={onEdit} onDelete={onDelete} />
                 ))}
                 {composer === ln && onComment && (
                   <Composer line={ln} lines={lines} lang={lang} onCancel={() => setComposer(null)}
@@ -97,24 +101,65 @@ function suggestionState(s: Suggestion, lines: string[]): 'ok' | 'stale' {
   return 'ok';
 }
 
-function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, onResolve, onApply }: {
+function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, onResolve, onApply, meId, onEdit, onDelete }: {
   thread: Thread; lines: string[]; lang: string; person: (id: string) => Profile; isAuthor: boolean; readOnly?: boolean;
   onReply: (body: string) => Promise<boolean>; onResolve?: (id: string, r: boolean) => void; onApply?: (id: string) => void;
+  meId?: string; onEdit?: (id: string, body: string) => Promise<boolean>; onDelete?: (id: string) => Promise<boolean>;
 }) {
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const saveEdit = async (id: string) => {
+    const v = draft.trim(); if (!v || busy) return;
+    setBusy(true); const ok = await onEdit?.(id, v); setBusy(false);
+    if (ok) setEditing(null);
+  };
   return (
     <div className={`thread ${thread.resolved ? 'resolved' : ''}`}>
       {thread.comments.map((c) => {
         const who = person(c.author_id);
         const s = c.suggestion;
         const state = s && !c.applied_at ? suggestionState(s, lines) : null;
+        const mine = !readOnly && Boolean(meId) && c.author_id === meId && Boolean(onEdit);
         return (
           <div className="cm" key={c.id}>
             <Avatar person={who} />
             <div style={{ minWidth: 0 }}>
-              <div className="cm-h"><b>{who.name}</b><time dateTime={c.created_at}>{timeAgo(c.created_at)}</time></div>
-              <div className="cm-text"><RichText text={c.body} lang={lang} /></div>
+              <div className="cm-h">
+                <b>{who.name}</b><time dateTime={c.created_at}>{timeAgo(c.created_at)}</time>
+                {c.edited_at && <span className="edited" title={new Date(c.edited_at).toLocaleString()}>수정됨</span>}
+                {mine && editing !== c.id && confirmDel !== c.id && (
+                  <span className="cm-acts">
+                    <button type="button" className="txt-btn" onClick={() => { setEditing(c.id); setDraft(c.body); setConfirmDel(null); }}>수정</button>
+                    <button type="button" className="txt-btn" onClick={() => { setConfirmDel(c.id); setEditing(null); }}>삭제</button>
+                  </span>
+                )}
+              </div>
+              {confirmDel === c.id && (
+                <div className="cm-del">
+                  <span>{thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요.' : '이 리뷰를 지울까요?'}</span>
+                  <button type="button" className="btn sm" onClick={() => setConfirmDel(null)}>취소</button>
+                  <button type="button" className="btn sm danger-btn" disabled={busy} onClick={async () => { setBusy(true); const ok = await onDelete?.(c.id); setBusy(false); if (ok) setConfirmDel(null); }}>삭제</button>
+                </div>
+              )}
+              {editing === c.id ? (
+                <form className="cm-edit" onSubmit={(e) => { e.preventDefault(); saveEdit(c.id); }}>
+                  <AssistTextarea lang={lang} context={lines.join('\n')} autoFocus value={draft} maxLength={5000} aria-label="리뷰 고치기"
+                    rows={Math.min(10, Math.max(2, draft.split('\n').length))} onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEdit(c.id); }
+                      if (e.key === 'Escape') { e.preventDefault(); setEditing(null); }
+                    }} />
+                  {/`/.test(draft) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={draft} lang={lang} /></div>}
+                  <div className="row-a">
+                    {s && <span className="hint">수정 제안 코드는 그대로 남아요</span>}
+                    <button type="button" className="btn ghost sm" onClick={() => setEditing(null)}>취소</button>
+                    <button className="btn primary sm" disabled={busy || !draft.trim() || draft.trim() === c.body}>저장</button>
+                  </div>
+                </form>
+              ) : <div className="cm-text"><RichText text={c.body} lang={lang} /></div>}
               {s && (
                 <div className="sugg">
                   <div className="sugg-h">

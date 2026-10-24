@@ -63,6 +63,8 @@ export interface Comment {
   suggestion: Suggestion | null;
   applied_at: string | null;
   created_at: string;
+  /** 글을 고친 시각 (고친 적 없으면 비어 있어요) */
+  edited_at?: string | null;
 }
 
 export interface Thread {

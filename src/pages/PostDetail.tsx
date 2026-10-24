@@ -4,7 +4,7 @@ import { CopyButton } from '../components/CopyButton';
 import { Icon } from '../components/Icon';
 import { BackBar } from '../components/Layout';
 import { CodeView } from '../components/CodeView';
-import { addLineComment, applySuggestion, deletePost, friendlyError, getPost, setResolved, setStatus } from '../lib/api';
+import { addLineComment, applySuggestion, deleteComment, deletePost, friendlyError, getPost, setResolved, setStatus, updateComment } from '../lib/api';
 import { checkCode } from '../lib/checks';
 import { fenceOf, langLabel } from '../lib/langs';
 import { href, navigate } from '../lib/router';
@@ -47,6 +47,8 @@ export function PostDetail({ id }: { id: string }) {
     run(() => addLineComment(post.id, line, body, s, threadId), '리뷰를 남겼어요');
   const onResolve = (tid: string, r: boolean) => { run(() => setResolved(tid, r), r ? '대화를 해결로 표시했어요' : '대화를 다시 열었어요'); };
   const onApply = (cid: string) => { run(() => applySuggestion(cid), '제안을 적용했어요'); };
+  const onEdit = (cid: string, body: string) => run(() => updateComment(cid, body), '리뷰를 고쳤어요');
+  const onDelete = (cid: string) => run(() => deleteComment(cid), '리뷰를 지웠어요');
   const onStatus = (s: Status) => { run(() => setStatus(post.id, s), `'${STATUS_LABEL[s]}'(으)로 바꿨어요`); };
 
   const postLink = () => location.href.split('#')[0] + href({ name: 'post', id: post.id });
@@ -90,7 +92,7 @@ export function PostDetail({ id }: { id: string }) {
           </div>
           <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄 번호를 눌러 리뷰를 남겨요</>}</p>
           <CodeView code={shownCode} lang={post.lang} problems={problems} threads={readOnly ? [] : data.threads} person={person}
-            isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} />
+            isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} meId={me.id} onEdit={onEdit} onDelete={onDelete} />
           {!readOnly && data.threads.length === 0 && (
             <div className="no-review">{isAuthor || !problems[0] ? '리뷰 없음'
               : <>리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>

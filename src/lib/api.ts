@@ -167,6 +167,18 @@ export async function addLineComment(postId: string, line: number, body: string,
   must(await supabase.from('comments').insert({ thread_id: tid, post_id: postId, body, suggestion }));
 }
 
+/** 내 리뷰 글 고치기. 고칠 권한이 없으면(새 SQL 전 포함) 0줄이 바뀌어서 오류로 알려요. */
+export async function updateComment(id: string, body: string): Promise<void> {
+  const rows = must(await supabase.from('comments').update({ body }).eq('id', id).select('id')) as { id: string }[];
+  if (!rows.length) throw new Error('comment edit not allowed');
+}
+
+/** 내 리뷰 지우기. 대화의 마지막 댓글이면 대화도 같이 지워져요. */
+export async function deleteComment(id: string): Promise<void> {
+  const rows = must(await supabase.from('comments').delete().eq('id', id).select('id')) as { id: string }[];
+  if (!rows.length) throw new Error('comment edit not allowed');
+}
+
 export async function setResolved(threadId: string, resolved: boolean): Promise<void> {
   must(await supabase.from('threads').update({ resolved }).eq('id', threadId));
 }
@@ -185,6 +197,7 @@ export function friendlyError(e: unknown): string {
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 조장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
+  if (/comment edit not allowed/.test(msg)) return '리뷰를 고치거나 지우려면 Supabase에서 새 SQL(20261024020000_comment_edit.sql)을 먼저 실행해야 해요.';
   if (/only owners/.test(msg)) return '조장·부조장만 할 수 있어요.';
   if (/owner taken|team_one_owner/.test(msg)) return '이미 조장이 있어요. 다른 직책을 골라 주세요.';
   if (/vice taken|team_one_vice/.test(msg)) return '이미 부조장이 있어요. 다른 직책을 골라 주세요.';

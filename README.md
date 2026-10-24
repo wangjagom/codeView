@@ -33,6 +33,7 @@
 3. [`20261023020000_username_login.sql`](supabase/migrations/20261023020000_username_login.sql) — 이름 로그인·알림 설정
 4. [`20261024000000_profile.sql`](supabase/migrations/20261024000000_profile.sql) — 프로필 사진·한 줄 소개 (선택)
 5. [`20261024010000_team_roles.sql`](supabase/migrations/20261024010000_team_roles.sql) — 조장·부조장·조원 직책 고르기
+6. [`20261024020000_comment_edit.sql`](supabase/migrations/20261024020000_comment_edit.sql) — 내 리뷰 고치기·지우기
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 
@@ -132,6 +133,7 @@ supabase/migrations/  테이블, RLS 정책, 수정 제안 적용 함수
 |---|---|
 | 글·리뷰·조원 보기 | 같은 조원 |
 | 코드 올리기, 리뷰·답글 달기, 대화 해결 | 같은 조원 (본인 이름으로만) |
+| 리뷰 글 고치기·지우기 | 쓴 사람 (수정 제안 코드는 못 바꿔요, 마지막 댓글을 지우면 대화도 지워져요) |
 | 상태 바꾸기, 글 삭제 | 글쓴이 |
 | 수정 제안 적용 | 글쓴이 (`apply_suggestion` 함수로만, 코드 직접 수정은 막혀 있어요) |
 | 조 만들기 | 로그인한 누구나 (직책은 직접 골라요) |
