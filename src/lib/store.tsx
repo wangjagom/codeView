@@ -9,6 +9,7 @@ export interface Store {
   team: MyTeam;
   /** 내가 속한 모든 조 */
   teams: MyTeam[];
+  /** 조장·부조장이면 조를 관리할 수 있어요 */
   isOwner: boolean;
   /** 지금 조의 조원 (나 포함) */
   profiles: Member[];

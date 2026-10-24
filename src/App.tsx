@@ -2,12 +2,12 @@ import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverLayer } from './components/Hover';
 import { Layout, type Filter } from './components/Layout';
-import { createProfile, friendlyError, getMyProfile, joinTeam, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
+import { createProfile, friendlyError, getMyProfile, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
 import { StoreContext, lastTeam, makePerson, pendingCode, pendingProfile, type MyTeam, type Store } from './lib/store';
 import { supabase } from './lib/supabase';
-import type { CommentLite, Member, Post, Profile } from './lib/types';
+import { canManage, type CommentLite, type Member, type Post, type Profile } from './lib/types';
 import { AuthCard, Login, Onboarding } from './pages/Auth';
 import { Feed } from './pages/Feed';
 import { Me } from './pages/Me';
@@ -44,7 +44,7 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToastMsg(''), 2400);
   }, []);
 
-  // 초대 링크로 들어왔으면 코드를 기억해 뒀다가 로그인·이름 정하기가 끝나면 참여시켜요.
+  // 초대 링크로 들어왔으면 코드를 기억해 뒀다가, 로그인 뒤 참여 화면에서 직책을 골라 들어와요.
   useEffect(() => { if (route.name === 'join') pendingCode.set(route.code.toUpperCase()); }, [route]);
 
   const loadTeamData = useCallback(async (tid: string) => {
@@ -67,22 +67,6 @@ export default function App() {
     setPhase('ready');
   }, [loadTeamData]);
 
-  const consumePending = useCallback(async (): Promise<string | null> => {
-    const code = pendingCode.get();
-    if (!code) return null;
-    pendingCode.set(null);
-    try {
-      const t = await joinTeam(code);
-      toast(`'${t.name}'에 참여했어요`);
-      if (location.hash.startsWith('#/join')) navigate({ name: 'feed' });
-      return t.id;
-    } catch (e) {
-      setJoinError(friendlyError(e));
-      if (location.hash.startsWith('#/join')) navigate({ name: 'feed' });
-      return null;
-    }
-  }, [toast]);
-
   const boot = useCallback(async (s: Session | null) => {
     setSession(s);
     if (!s) { setPhase('signedOut'); return; }
@@ -101,12 +85,12 @@ export default function App() {
         try { await updateProfile(s.user.id, extra); profile = (await getMyProfile(s.user.id)) ?? profile; } catch { /* 사진·소개는 내 정보에서 다시 넣을 수 있어요 */ }
       }
       setMe(profile);
-      const joined = await consumePending();
-      await pickTeam(s.user.id, joined);
+      await pickTeam(s.user.id);
+      if (pendingCode.get() && !location.hash.startsWith('#/teams')) navigate({ name: 'teams' });
     } catch (e) {
       setError(friendlyError(e)); setPhase('error');
     }
-  }, [pickTeam, consumePending]);
+  }, [pickTeam]);
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -118,11 +102,10 @@ export default function App() {
     return () => data.subscription.unsubscribe();
   }, [boot]);
 
-  // 로그인한 상태에서 초대 링크를 열면 바로 참여해요.
+  // 로그인한 상태에서 초대 링크를 열면 참여 화면(직책 고르기)으로 가요.
   useEffect(() => {
-    if (phase !== 'ready' || route.name !== 'join' || !session) return;
-    (async () => { const id = await consumePending(); await pickTeam(session.user.id, id ?? teamRef.current); })();
-  }, [phase, route, session, consumePending, pickTeam]);
+    if (phase === 'ready' && route.name === 'join') navigate({ name: 'teams' });
+  }, [phase, route]);
 
   const refresh = useCallback(async () => { if (teamRef.current) await loadTeamData(teamRef.current); }, [loadTeamData]);
   const reloadTeams = useCallback(async (prefer?: string) => {
@@ -157,7 +140,7 @@ export default function App() {
     const team = teams.find((t) => t.id === teamId);
     if (phase !== 'ready' || !session || !me || !team) return null;
     const person = makePerson(profiles);
-    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: team.role === 'owner', profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
+    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: canManage(team.role), profiles, person, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut };
   }, [phase, session, me, teams, teamId, profiles, posts, comments, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
   const toastEl = <><div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div><HoverLayer /></>;

@@ -59,12 +59,33 @@ export async function listMembers(teamId: string): Promise<Member[]> {
   return rows.filter((r) => r.profiles).map((r) => ({ ...(r.profiles as Profile), role: r.role, joined_at: r.joined_at }));
 }
 
-export async function createTeam(name: string, tasks: string[]): Promise<Team> {
-  return must(await supabase.rpc('create_team', { p_name: name, p_tasks: tasks })) as Team;
+// 직책 고르기는 새 SQL(20261024010000_team_roles.sql)을 실행해야 돼요. 아직이면 예전 방식(만든 사람 = 조장)으로 해요.
+const noRoleArg = (e: { message: string; code?: string } | null) => Boolean(e && (e.code === 'PGRST202' || /Could not find the function/i.test(e.message)));
+
+export async function createTeam(name: string, tasks: string[], role: Role = 'owner'): Promise<Team> {
+  let res = await supabase.rpc('create_team', { p_name: name, p_tasks: tasks, p_role: role });
+  if (noRoleArg(res.error)) res = await supabase.rpc('create_team', { p_name: name, p_tasks: tasks });
+  return must(res) as Team;
 }
 
-export async function joinTeam(code: string): Promise<Team> {
-  return must(await supabase.rpc('join_team', { p_code: code })) as Team;
+export async function joinTeam(code: string, role: Role = 'member'): Promise<Team> {
+  let res = await supabase.rpc('join_team', { p_code: code, p_role: role });
+  if (noRoleArg(res.error)) res = await supabase.rpc('join_team', { p_code: code });
+  return must(res) as Team;
+}
+
+export interface TeamPeek { name: string; members: number; owner_taken: boolean; vice_taken: boolean; joined: boolean }
+
+/** 초대 코드로 조 이름과 빈 직책을 미리 봐요. 새 SQL 전이면 null이에요. */
+export async function peekTeam(code: string): Promise<TeamPeek | null> {
+  const res = await supabase.rpc('peek_team', { p_code: code });
+  if (noRoleArg(res.error)) return null;
+  return must(res) as TeamPeek;
+}
+
+/** 내 직책 바꾸기 (빈 조장·부조장 자리를 맡거나 조원으로 내려와요) */
+export async function setMyRole(teamId: string, role: Role): Promise<void> {
+  must(await supabase.rpc('set_my_role', { p_team: teamId, p_role: role }));
 }
 
 export async function regenerateInvite(teamId: string): Promise<string> {
@@ -164,7 +185,11 @@ export function friendlyError(e: unknown): string {
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 조장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '조장이 한 명은 있어야 해요. 다른 조원을 먼저 조장으로 지정해 주세요.';
-  if (/only owners/.test(msg)) return '조장만 할 수 있어요.';
+  if (/only owners/.test(msg)) return '조장·부조장만 할 수 있어요.';
+  if (/owner taken|team_one_owner/.test(msg)) return '이미 조장이 있어요. 다른 직책을 골라 주세요.';
+  if (/vice taken|team_one_vice/.test(msg)) return '이미 부조장이 있어요. 다른 직책을 골라 주세요.';
+  if (/set_my_role|peek_team/.test(msg) && /function/i.test(msg)) return '직책을 바꾸려면 Supabase에서 새 SQL(20261024010000_team_roles.sql)을 먼저 실행해야 해요.';
+  if (/invalid input value for enum|team_role/.test(msg)) return '부조장을 쓰려면 Supabase에서 새 SQL(20261024010000_team_roles.sql)을 먼저 실행해야 해요.';
   if (/row-level security|JSON object requested/.test(msg)) return '이 조에 속한 사람만 볼 수 있어요.';
   if (/rate limit/i.test(msg)) return '요청이 너무 많아요. 잠시 뒤 다시 시도해 주세요.';
   if (/User already registered|profiles_name_unique|duplicate key.*profiles/i.test(msg)) return '이미 있는 이름이에요. 다른 이름을 정해 주세요.';

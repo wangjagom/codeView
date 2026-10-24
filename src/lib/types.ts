@@ -10,7 +10,10 @@ export interface Profile {
   bio?: string | null;
 }
 
-export type Role = 'owner' | 'member';
+/** owner = 조장, vice = 부조장. 둘 다 조를 관리할 수 있어요. */
+export type Role = 'owner' | 'vice' | 'member';
+export const ROLE_LABEL: Record<Role, string> = { owner: '조장', vice: '부조장', member: '조원' };
+export const canManage = (role: Role | undefined) => role === 'owner' || role === 'vice';
 
 export interface Team {
   id: string;

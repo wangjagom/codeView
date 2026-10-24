@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { href, navigate } from '../lib/router';
 import { useStore } from '../lib/store';
 import { weekStart } from '../lib/util';
+import { ROLE_LABEL } from '../lib/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 
@@ -76,7 +77,7 @@ function TeamSheet({ onClose }: { onClose: () => void }) {
         <div className="sheet-list">
           {teams.map((t) => (
             <button key={t.id} type="button" className="item" onClick={() => { onClose(); switchTeam(t.id); }}>
-              <span className="body"><span className="t">{t.name}</span><span className="m">{t.role === 'owner' ? '조장' : '조원'}</span></span>
+              <span className="body"><span className="t">{t.name}</span><span className="m">{ROLE_LABEL[t.role] ?? '조원'}</span></span>
               {t.id === team.id && <span className="check-mark" aria-label="지금 보는 조">✓</span>}
             </button>
           ))}
