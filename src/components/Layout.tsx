@@ -109,7 +109,7 @@ export function WeekStats() {
         <div><b>{posts.filter((p) => p.status === 'done' && inWeek(p.updated_at)).length}</b><small>해결</small></div>
       </div>
       {top && given(top.id) > 0 && (
-        <p className="cheer"><Avatar person={top} size="xs" /><span><b>{top.name}</b>님이 이번 주 리뷰를 가장 많이 남겼어요 · {given(top.id)}개</span></p>
+        <p className="cheer"><Avatar person={top} size="xs" /><span>리뷰 1위 <b>{top.name}</b> · {given(top.id)}개</span></p>
       )}
     </>
   );

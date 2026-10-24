@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Problem } from '../lib/checks';
 import { highlight, highlightWithMark } from '../lib/highlight';
-import { fenceOf, langLabel } from '../lib/langs';
+import { fenceOf } from '../lib/langs';
 import type { Profile, Suggestion, Thread } from '../lib/types';
 import { timeAgo } from '../lib/util';
 import { Avatar } from './Avatar';
@@ -121,9 +121,9 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
                     <span>수정 제안 · {s.from}{s.count > 1 ? `–${s.from + s.count - 1}` : ''}줄</span>
                     <span className="sp" />
                     {c.applied_at ? <span className="applied">적용됨</span>
-                      : state === 'stale' ? <span>코드가 바뀌어 적용할 수 없어요</span>
+                      : state === 'stale' ? <span>코드가 바뀌어 적용 불가</span>
                       : isAuthor && !readOnly ? <button type="button" className="btn primary sm with-ic" onClick={() => onApply?.(c.id)}><Icon name="check" />제안 적용</button>
-                      : <span>글쓴이가 적용할 수 있어요</span>}
+                      : <span>작성자만 적용 가능</span>}
                   </div>
                   <div className="diff" data-lang={lang} data-code-all="diff">
                     {s.original.map((t, i) => <div className="d" data-code="diff" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
@@ -195,10 +195,9 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
       <div className="fmt-bar" role="group" aria-label="코드 넣기">
         <button type="button" className="act-btn sm" onClick={() => wrap(false)}><code>`</code>한 줄 코드</button>
         <button type="button" className="act-btn sm" onClick={() => wrap(true)}><code>```</code>코드 블록</button>
-        <span className="hint">누르고 바로 코드를 쓰거나, 글자를 고른 뒤 누르면 감싸요 · {langLabel(lang)} 색</span>
       </div>
       <AssistTextarea lang={lang} context={lines.join('\n')} areaRef={areaRef} id={`cmp-${line}`} autoFocus value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000}
-        placeholder={`${line}번째 줄에 대한 리뷰를 남겨 주세요.\n코드는 \`백틱\`, 여러 줄은 \`\`\`로 감싸면 색이 들어가요.`}
+        placeholder={`${line}번째 줄 리뷰`}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }} />
       {/`/.test(body) && <div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={body} lang={lang} /></div>}
       <label className="sugg-toggle"><input type="checkbox" checked={suggest} onChange={(e) => setSuggest(e.target.checked)} /> 고친 코드도 제안하기</label>
@@ -209,7 +208,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
             <select value={count} onChange={(e) => changeCount(Number(e.target.value))} aria-label="바꿀 줄 수">
               {Array.from({ length: max }, (_, i) => <option key={i} value={i + 1}>{i + 1}줄</option>)}
             </select>
-            <span>을 이렇게 바꿔요</span>
+            <span>바꿀 코드</span>
           </div>
           <AssistTextarea lang={lang} context={lines.join('\n')} mode="code" className="mono" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} aria-label="제안할 코드" rows={Math.max(2, to.split('\n').length)} />
         </div>

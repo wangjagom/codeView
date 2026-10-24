@@ -166,8 +166,7 @@ export default function App() {
     return (
       <>
         <AuthCard wide>
-          <h1 className="h-big">함께 리뷰할<br />조를 정해요</h1>
-          <p>초대 코드로 조에 들어가거나, 새 조를 만들어 조원들을 초대해요.</p>
+          <h1 className="h-big">조 참여</h1>
           <TeamForms initialError={joinError} onDone={async (t) => { setJoinError(''); await pickTeam(session.user.id, t.id); if (t.created_by === session.user.id) navigate({ name: 'team' }); }} />
           <button type="button" className="btn ghost sm" onClick={signOut}>로그아웃</button>
         </AuthCard>

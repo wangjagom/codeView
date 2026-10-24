@@ -60,7 +60,7 @@ export function PostDetail({ id }: { id: string }) {
       <BackBar />
       <div className="meta-row"><Avatar person={author} size="xs" /><b>{author.name}</b><span className="dot" />{timeAgo(post.created_at)}<span className="dot" />{post.task}</div>
       <h1 className="h-big tight">{post.title}</h1>
-      {post.ask && <div className="ask"><span className="lbl">받고 싶은 피드백</span><span className="body">{post.ask}</span></div>}
+      {post.ask && <div className="ask"><span className="lbl">요청 사항</span><span className="body">{post.ask}</span></div>}
       <div className="card status-card">
         <div className="status-row">
           <StatusPill status={post.status} />
@@ -72,7 +72,7 @@ export function PostDetail({ id }: { id: string }) {
           <div className="seg seg3" role="group" aria-label="상태 바꾸기">
             {(Object.keys(STATUS_LABEL) as Status[]).map((s) => <button key={s} type="button" aria-pressed={post.status === s} onClick={() => onStatus(s)}>{STATUS_LABEL[s]}</button>)}
           </div>
-        ) : <span className="muted small">상태는 {author.name}님이 바꿔요</span>}
+        ) : null}
       </div>
 
       <div className="d-grid">
@@ -88,12 +88,12 @@ export function PostDetail({ id }: { id: string }) {
             <CopyButton text={chatText} label="채팅용 복사" icon="chat" onFail={toast} />
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
           </div>
-          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b>을 보고 있어요. 지난 버전에는 리뷰를 달 수 없어요.</> : <>줄 번호를 누르면 그 줄에 리뷰를 남길 수 있어요</>}</p>
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄 번호를 눌러 리뷰를 남겨요</>}</p>
           <CodeView code={shownCode} lang={post.lang} problems={problems} threads={readOnly ? [] : data.threads} person={person}
             isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} />
           {!readOnly && data.threads.length === 0 && (
-            <div className="no-review">{isAuthor ? '아직 리뷰가 없어요. 조원이 리뷰를 남기면 여기에 바로 나타나요.'
-              : <>아직 리뷰가 없어요. {problems[0] ? <><a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a>부터 봐 주면 좋아요.</> : '첫 리뷰를 남겨 보세요.'}</>}</div>
+            <div className="no-review">{isAuthor || !problems[0] ? '리뷰 없음'
+              : <>리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
           )}
         </div>
 

@@ -84,7 +84,7 @@ export function Me({ onTeam }: { onTeam: () => void }) {
           </>
         )}
       </div>
-      <p className="muted small lead">메일 발송은 준비 중이라 지금은 설정만 저장돼요. 이메일은 본인만 볼 수 있어요.</p>
+      <p className="muted small lead">메일 발송 준비 중 · 이메일은 본인만 볼 수 있어요</p>
 
       <div className="sec-h"><h2>계정</h2></div>
       <div className="card list">
@@ -94,7 +94,7 @@ export function Me({ onTeam }: { onTeam: () => void }) {
             <input type="text" autoComplete="username" value={me.name} readOnly hidden />
             <input className="inp" id="newPw" type="password" autoComplete="new-password" value={pw} placeholder={`새 비밀번호 (${MIN_PASSWORD}자 이상)`} onChange={(e) => setPw(e.target.value)} />
             <input className="inp" id="newPw2" type="password" autoComplete="new-password" value={pw2} placeholder="새 비밀번호 확인" onChange={(e) => setPw2(e.target.value)} />
-            <span className="hint">비밀번호를 잊으면 되찾을 방법이 없어요. 새 이름으로 가입해 조에 다시 들어오면 돼요.</span>
+            <span className="hint">잊으면 되찾을 수 없어요</span>
             <button className="btn primary wide" disabled={!pw}>비밀번호 바꾸기</button>
           </form>
         )}

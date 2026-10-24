@@ -206,13 +206,13 @@ export function CodeEditor({ id, value, lang, problems, placeholder, fileName = 
           try {
             const t = await navigator.clipboard.readText();
             if (t) { onChange(t); document.getElementById(id)?.focus(); } else onToast?.('클립보드가 비어 있어요');
-          } catch { document.getElementById(id)?.focus(); onToast?.('여기를 길게 누르거나 Ctrl/⌘ + V로 붙여넣어 주세요'); }
+          } catch { document.getElementById(id)?.focus(); onToast?.('Ctrl/⌘ + V로 붙여넣어 주세요'); }
         }}><Icon name="paste" />붙여넣기</button>
         {value && <button type="button" className="ed-act" onClick={() => { onChange(''); setSg(null); document.getElementById(id)?.focus(); }}><Icon name="trash" />지우기</button>}
       </div>
       {!value && tpls.length > 0 && (
         <div className="ed-tpl">
-          <span className="ed-tpl-h">기본 코드로 시작</span>
+          <span className="ed-tpl-h">기본 코드</span>
           {tpls.map((tp) => <button key={tp.id} type="button" className="ed-chip" title={`${tp.from}에서 만들어 주는 코드`} onClick={() => pickTemplate(tp)}>{tp.label}</button>)}
         </div>
       )}

@@ -40,17 +40,16 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
     <div className="team-forms">
       <form className="tf-card" onSubmit={(e) => { e.preventDefault(); join(); }}>
         <h2>초대 코드로 참여하기</h2>
-        <p className="muted small">조장에게 받은 8자리 코드나 초대 링크로 들어와요.</p>
-        <label htmlFor="inviteCode" className="lbl">초대 코드</label>
+                <label htmlFor="inviteCode" className="lbl">초대 코드</label>
         <input id="inviteCode" className="code-input" value={code} maxLength={12} autoComplete="off" placeholder="ABCD2345" onChange={(e) => setCode(e.target.value.toUpperCase())} />
         <button className="btn primary wide" disabled={busy !== null}>{busy === 'join' ? '참여하는 중…' : '참여하기'}</button>
       </form>
       <form className="tf-card" onSubmit={(e) => { e.preventDefault(); create(); }}>
         <h2>새 조 만들기</h2>
-        <p className="muted small">만든 사람이 조장이 돼요. 만든 뒤 초대 링크를 조원들에게 보내면 돼요.</p>
+        <p className="muted small">만든 사람이 조장이 돼요</p>
         <label htmlFor="teamName" className="lbl">조 이름</label>
         <input id="teamName" value={name} maxLength={40} placeholder="예: 프론트엔드 7기 3조" onChange={(e) => setName(e.target.value)} />
-        <label htmlFor="teamTasks" className="lbl">과제 목록 <span className="muted">(쉼표로 구분, 나중에 바꿀 수 있어요)</span></label>
+        <label htmlFor="teamTasks" className="lbl">과제 목록 <span className="muted">(쉼표로 구분)</span></label>
         <input id="teamTasks" value={tasks} onChange={(e) => setTasks(e.target.value)} />
         <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? '만드는 중…' : '조 만들기'}</button>
       </form>
@@ -65,9 +64,9 @@ export function TeamsPage() {
   return (
     <section>
       <BackBar label="닫기" />
-      <h1 className="h-big tight">다른 조에<br />들어가거나 만들어요</h1>
-      <p className="muted small lead">지금 속한 조 {teams.length}개. 조를 바꿔도 이전 조의 코드와 리뷰는 그대로 남아요.</p>
-      <TeamForms onDone={async (t, joined) => { await reloadTeams(t.id); toast(joined ? `'${t.name}'에 참여했어요` : `'${t.name}'을 만들었어요. 조원들을 초대해 보세요`); navigate(joined ? { name: 'feed' } : { name: 'team' }); }} />
+      <h1 className="h-big tight">조 추가</h1>
+      <p className="muted small lead">속한 조 {teams.length}개</p>
+      <TeamForms onDone={async (t, joined) => { await reloadTeams(t.id); toast(joined ? `'${t.name}'에 참여했어요` : `'${t.name}'을 만들었어요`); navigate(joined ? { name: 'feed' } : { name: 'team' }); }} />
     </section>
   );
 }
@@ -97,7 +96,6 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
       <section className="invite" aria-label="조원 초대하기">
         <span className="lab">조원 초대하기</span>
         <span className="invite-code" aria-label={`초대 코드 ${team.invite_code}`}>{pretty}</span>
-        <span className="small sub">코드를 알려 주거나 링크를 보내면 바로 들어와요.</span>
         <div className="acts">
           <CopyButton className="big white" text={() => team.invite_code} label="코드 복사" onFail={toast} />
           <CopyButton className="big primary" text={() => link} label="초대 링크 복사" icon="link" onFail={toast} />

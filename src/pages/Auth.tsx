@@ -44,13 +44,13 @@ export function Login({ invited }: { invited?: boolean }) {
 
   return (
     <AuthCard>
-      <h1 className="h-big">{invited ? <>초대받은 조에<br />들어가 볼까요?</> : mode === 'up' ? <>조원끼리 코드를<br />주고받으며 리뷰해요</> : <>다시 오셨네요</>}</h1>
+      <h1 className="h-big">{invited ? '초대받은 조에 참여' : mode === 'up' ? '가입' : '로그인'}</h1>
       <div className="seg" role="tablist" aria-label="로그인 방식">
         <button type="button" role="tab" aria-pressed={mode === 'in'} aria-selected={mode === 'in'} onClick={() => switchMode('in')}>로그인</button>
         <button type="button" role="tab" aria-pressed={mode === 'up'} aria-selected={mode === 'up'} onClick={() => switchMode('up')}>처음이에요</button>
       </div>
       <form className="auth-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        {mode === 'up' && <p className="small muted">{invited ? '가입하면 바로 초대받은 조에 들어가요. ' : ''}이름은 다른 사람과 겹치지 않아야 하고, 나중에 바꿀 수 없어요. 이메일은 필요 없어요.</p>}
+        {mode === 'up' && <p className="small muted">{invited ? '가입하면 바로 조에 들어가요. ' : ''}이름은 중복 불가, 나중에 못 바꿔요. 이메일 필요 없음.</p>}
         <label htmlFor="loginName" className="lbl">이름</label>
         <input id="loginName" value={name} maxLength={20} autoComplete="username" autoCapitalize="off" spellCheck={false} placeholder="예: 준호, dev_kim" onChange={(e) => setName(e.target.value)} />
         <label htmlFor="loginPw" className="lbl">비밀번호</label>
@@ -81,7 +81,7 @@ export function Onboarding({ userId, onDone, onSignOut }: { userId: string; onDo
   const [err, setErr] = useState('');
   return (
     <AuthCard>
-      <h1 className="h-big">조원들에게 보일<br />이름을 정해요</h1>
+      <h1 className="h-big">표시 이름</h1>
       <form className="auth-form" onSubmit={async (e) => {
         e.preventDefault();
         const problem = nameProblem(name); if (problem) { setErr(problem); return; }

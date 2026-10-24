@@ -58,7 +58,7 @@ export function NewPost() {
   return (
     <section>
       <BackBar label="닫기" />
-      <h1 className="h-big tight">어떤 코드를<br />봐 드릴까요?</h1>
+      <h1 className="h-big tight">코드 올리기</h1>
       <form className="form" id="newPostForm" onSubmit={(ev) => { ev.preventDefault(); submit(); }}>
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder="예: 삭제 버튼을 누르면 다른 항목이 지워져요" onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
@@ -69,38 +69,38 @@ export function NewPost() {
           <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={file} maxLength={80} placeholder={LANGS.find((l) => l.id === lang)?.sample ?? "zr_report.prog.abap"} onChange={(ev) => { const v = ev.target.value; setFile(v); const g = langFromFile(v); if (g) { setLang(g); setLangAuto(false); } persist({ file: v, ...(g ? { lang: g } : {}) }); }} /></div>
           <div className="field"><label htmlFor="nLang">언어</label>
             <select id="nLang" value={lang} onChange={(ev) => { setLang(ev.target.value); setLangAuto(false); persist({ lang: ev.target.value }); }}>{LANGS.map((l) => <option key={l.id} value={l.id}>{l.label} · {l.course}</option>)}</select>
-            {langAuto && code.trim() && <span className="muted small">붙여넣은 코드를 보고 골랐어요</span>}</div>
+            {langAuto && code.trim() && <span className="muted small">자동 감지</span>}</div>
         </div>
         <div className="field">
           <label htmlFor="nCode">코드</label>
           <div className="paste">
-            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="여기에 코드를 붙여넣거나, 위에서 기본 코드를 골라요" onToast={toast}
+            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="코드 붙여넣기 (Ctrl/⌘ + V)" onToast={toast}
               fileName={file} onTemplate={(f, l, c) => { const nf = file.trim() ? file : f; setFile(nf); setLang(l); setLangAuto(false); persist({ file: nf, lang: l, code: c }); }}
               onChange={(v) => { setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }} />
             <div className="check" aria-live="polite">
-              {!code.trim() ? <span className="muted">코드를 붙여넣으면 바로 검사해요</span>
-                : !problems.length ? <span className="okmsg">✓ 흔한 실수는 보이지 않아요</span>
+              {!code.trim() ? <span className="muted">붙여넣으면 바로 검사해요</span>
+                : !problems.length ? <span className="okmsg">✓ 검사 통과</span>
                 : <>
-                  <div className="check-h">올리기 전에 확인해 보세요 {e > 0 && <span className="pill e">오류 {e}</span>}{problems.length - e > 0 && <span className="pill w">경고 {problems.length - e}</span>}</div>
+                  <div className="check-h">검사 결과 {e > 0 && <span className="pill e">오류 {e}</span>}{problems.length - e > 0 && <span className="pill w">경고 {problems.length - e}</span>}</div>
                   <ul>{problems.map((p) => <li key={p.line + p.rule}><span className={`dot ${p.sev}`} /><span className="ln">{p.line}줄</span><span><b>{p.title}</b> · {p.easy}</span></li>)}</ul>
                 </>}
             </div>
           </div>
         </div>
-        <div className="field"><label htmlFor="nAsk">어떤 피드백을 받고 싶어요?</label><textarea id="nAsk" rows={2} value={ask} maxLength={2000} placeholder="예: 버튼을 누르기도 전에 화면이 멈춰요. 원인이 뭘까요?" onChange={(ev) => { setAsk(ev.target.value); persist({ ask: ev.target.value }); }} /></div>
-        <div className="field"><span className="lbl">누구에게 부탁할까요?</span>
+        <div className="field"><label htmlFor="nAsk">요청 사항 <span className="muted">(선택)</span></label><textarea id="nAsk" rows={2} value={ask} maxLength={2000} placeholder="예: catch에서 500 오류가 안 잡혀요" onChange={(ev) => { setAsk(ev.target.value); persist({ ask: ev.target.value }); }} /></div>
+        <div className="field"><span className="lbl">리뷰어</span>
           <div className="picks">
             {mates.length ? mates.map((p) => (
               <button key={p.id} type="button" className="pick" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>
                 <Avatar person={p} size="lg" />{p.name}
               </button>
-            )) : <span className="muted">아직 다른 조원이 없어요. <a href={href({ name: 'team' })}>초대 링크</a>를 보내 보세요.</span>}
+            )) : <span className="muted">다른 조원이 없어요 · <a href={href({ name: 'team' })}>초대하기</a></span>}
           </div>
         </div>
-        <p className="muted small">쓰는 중인 내용은 이 브라우저에 임시 저장돼요.</p>
+        <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>
       </form>
       <div className="dock"><div className="dock-in">
-        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? '올리는 중…' : picked.length ? `${picked.map((id) => profiles.find((x) => x.id === id)?.name).join(', ')}님에게 리뷰 요청하기` : '리뷰 요청하기'}</button>
+        <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? '올리는 중…' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}</button>
       </div></div>
     </section>
   );

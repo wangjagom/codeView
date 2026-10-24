@@ -114,6 +114,8 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin-bottom: 6px; scrollbar-width: none; }
 .chip { flex: none; border: 0; background: var(--surface); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--sub); }
 .chip[aria-pressed="true"] { background: var(--fg); color: var(--surface); font-weight: 700; }
+.chip-n { margin-left: 2px; font-size: 12.5px; font-weight: 600; opacity: .55; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] .chip-n { opacity: .75; }
 
 .turn-card { background: var(--surface); border-radius: var(--r); padding: 20px; display: grid; gap: 10px; }
 .turn-card .lab { font-size: 13px; font-weight: 700; color: var(--accent); }
