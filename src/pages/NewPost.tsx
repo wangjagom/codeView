@@ -13,6 +13,7 @@ import { TEMPLATE_SETS, templateSetFiles } from '../lib/templates';
 import { filesOf, type Post, type PostKind, type Thread } from '../lib/types';
 import { lineMapper } from '../lib/diff';
 import { LangIcon } from '../components/LangIcon';
+import { Picker } from '../components/Picker';
 
 const DRAFT_KEY = 'codeview:draft';
 const NEW_TASK = '__new_task__';
@@ -190,14 +191,14 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
         <div className="two">
           <div className="field"><label htmlFor="nTitle">제목</label><input id="nTitle" value={title} maxLength={120} placeholder={share ? '예: 판매 오더 조회 CDS View + Projection' : '예: 삭제 버튼을 누르면 다른 항목이 지워져요'} onChange={(ev) => { setTitle(ev.target.value); persist({ title: ev.target.value }); }} /></div>
           <div className="field"><label htmlFor="nTask">과제</label>
-            <select id="nTask" value={newTask !== null ? NEW_TASK : task} onChange={(ev) => {
-              if (ev.target.value === NEW_TASK) { setNewTask(''); requestAnimationFrame(() => document.getElementById('nNewTask')?.focus()); return; }
-              pickTask(ev.target.value);
-            }}>{team.tasks.map((t) => <option key={t}>{t}</option>)}<option value={NEW_TASK}>+ 새 과제 추가…</option></select>
+            <Picker variant="field" id="nTask" label="과제" value={newTask !== null ? NEW_TASK : task} onChange={(v) => {
+              if (v === NEW_TASK) { setNewTask(''); return; }
+              pickTask(v);
+            }} options={[...team.tasks.map((t) => ({ value: t, label: t })), { value: NEW_TASK, label: '+ 새 과제 추가…' }]} />
             <Expand open={newTask !== null}>
               <div className="new-task">
                 <div className="task-add">
-                  <input id="nNewTask" value={newTask ?? ''} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름" autoComplete="off" aria-label="새 과제 이름"
+                  <input id="nNewTask" autoFocus value={newTask ?? ''} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름" autoComplete="off" aria-label="새 과제 이름"
                     onChange={(ev) => setNewTask(ev.target.value)}
                     onKeyDown={(ev) => { if (ev.key === 'Enter' && !ev.nativeEvent.isComposing) { ev.preventDefault(); addTask(); } if (ev.key === 'Escape') setNewTask(null); }} />
                   <button type="button" className="btn sm primary" disabled={addingTask || !newTask?.trim()} onClick={addTask}>{addingTask ? <>추가 중<Dots /></> : '추가'}</button>
@@ -238,7 +239,8 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
         <div className="two">
           <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={cur.name} maxLength={80} placeholder={sampleOf(cur.lang)} onChange={(ev) => { const v = ev.target.value; const g = langFromFile(v); patchFile({ name: v, ...(g ? { lang: g, langAuto: false } : {}) }); }} /></div>
           <div className="field"><label htmlFor="nLang">언어</label>
-            <select id="nLang" value={cur.lang} onChange={(ev) => patchFile({ lang: ev.target.value, langAuto: false })}>{LANGS.map((l) => <option key={l.id} value={l.id}>{l.label} · {l.course}</option>)}</select>
+            <Picker variant="field" id="nLang" label="언어" value={cur.lang} onChange={(v) => patchFile({ lang: v, langAuto: false })}
+              options={LANGS.map((l) => ({ value: l.id, label: l.label, hint: l.course, icon: <LangIcon lang={l.id} size={20} /> }))} />
             {cur.langAuto && cur.code.trim() && <span className="muted small">자동 감지</span>}</div>
         </div>
         <div className="field">

@@ -9,6 +9,7 @@ import { RichText } from './RichText';
 import { AssistTextarea } from './AssistTextarea';
 import { Icon } from './Icon';
 import { Expand } from './Motion';
+import { Picker } from './Picker';
 
 const langFence = (id: string) => (id === 'CDS' ? 'cds' : id === 'SQLScript' ? 'sql' : fenceOf(id));
 
@@ -252,9 +253,8 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
         <div className="sugg-edit">
           <div className="sugg-h">
             <span>{line}번째 줄부터</span>
-            <select value={count} onChange={(e) => changeCount(Number(e.target.value))} aria-label="바꿀 줄 수">
-              {Array.from({ length: max }, (_, i) => <option key={i} value={i + 1}>{i + 1}줄</option>)}
-            </select>
+            <Picker variant="mini" align="left" label="바꿀 줄 수" value={String(count)} onChange={(v) => changeCount(Number(v))}
+              options={Array.from({ length: max }, (_, i) => ({ value: String(i + 1), label: `${i + 1}줄` }))} />
             <span>바꿀 코드</span>
           </div>
           <AssistTextarea lang={lang} context={lines.join('\n')} mode="code" className="mono" value={to} onChange={(e) => setTo(e.target.value)} spellCheck={false} aria-label="제안할 코드" rows={Math.max(2, to.split('\n').length)} />

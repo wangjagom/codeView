@@ -10,6 +10,7 @@ import { inviteUrl, navigate } from '../lib/router';
 import { pendingCode, useStore } from '../lib/store';
 import { ROLE_LABEL, type Role, type Team } from '../lib/types';
 import { Dots, useFlip } from '../components/Motion';
+import { Picker } from '../components/Picker';
 
 const ROLES: Role[] = ['owner', 'vice', 'member'];
 
@@ -168,10 +169,9 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
                   <span className="m-act"><button type="button" className="btn sm" onClick={() => setConfirmRemove(null)}>취소</button><button type="button" className="btn sm danger-btn" onClick={() => { setConfirmRemove(null); run(() => removeMember(team.id, p.id), `${p.name}님을 내보냈어요`); }}>내보내기</button></span>
                 ) : (
                   <span className="m-act">
-                    <select className="role-sel" value={p.role} aria-label={`${p.name} 직책`}
-                      onChange={(e) => { const r = e.target.value as Role; run(() => setRole(team.id, p.id, r), `${p.name}님을 ${ROLE_LABEL[r]}으로 바꿨어요`); }}>
-                      {ROLES.map((r) => { const h = holder(r); const busy = r !== 'member' && h && h.id !== p.id; return <option key={r} value={r} disabled={Boolean(busy)}>{ROLE_LABEL[r]}{busy ? ` (${h!.name})` : ''}</option>; })}
-                    </select>
+                    <Picker<Role> variant="soft" label={`${p.name} 직책`} value={p.role}
+                      onChange={(r) => run(() => setRole(team.id, p.id, r), `${p.name}님을 ${ROLE_LABEL[r]}으로 바꿨어요`)}
+                      options={ROLES.map((r) => { const h = holder(r); const busy = r !== 'member' && h && h.id !== p.id; return { value: r, label: ROLE_LABEL[r], hint: busy ? `지금 ${h!.name}님` : undefined, disabled: Boolean(busy) }; })} />
                     <button type="button" className="txt-btn" onClick={() => setConfirmRemove(p.id)}>내보내기</button>
                   </span>
                 )
