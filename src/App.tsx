@@ -2,10 +2,10 @@ import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverLayer } from './components/Hover';
 import { Layout, type Filter } from './components/Layout';
-import { createProfile, friendlyError, getMyProfile, joinTeam, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
+import { createProfile, friendlyError, getMyProfile, joinTeam, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
-import { StoreContext, lastTeam, makePerson, pendingCode, type MyTeam, type Store } from './lib/store';
+import { StoreContext, lastTeam, makePerson, pendingCode, pendingProfile, type MyTeam, type Store } from './lib/store';
 import { supabase } from './lib/supabase';
 import type { CommentLite, Member, Post, Profile } from './lib/types';
 import { AuthCard, Login, Onboarding } from './pages/Auth';
@@ -95,6 +95,11 @@ export default function App() {
         profile = await getMyProfile(s.user.id);
       }
       if (!profile) { setPhase('onboarding'); return; }
+      const extra = pendingProfile.get();
+      if (extra) {
+        pendingProfile.set(null);
+        try { await updateProfile(s.user.id, extra); profile = (await getMyProfile(s.user.id)) ?? profile; } catch { /* 사진·소개는 내 정보에서 다시 넣을 수 있어요 */ }
+      }
       setMe(profile);
       const joined = await consumePending();
       await pickTeam(s.user.id, joined);

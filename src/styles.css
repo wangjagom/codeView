@@ -102,6 +102,15 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .ava.md { width: 32px; height: 32px; font-size: 13px; }
 .ava.lg { width: 40px; height: 40px; font-size: 15px; }
 .ava.xs { width: 22px; height: 22px; font-size: 10px; }
+.ava.xl { width: 64px; height: 64px; font-size: 24px; }
+.ava.photo { object-fit: cover; background: var(--fill); padding: 0; }
+.pf { display: grid; gap: 8px; }
+.pf-photo { display: flex; align-items: center; gap: 14px; }
+.pf-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.pf-acts .muted { flex-basis: 100%; }
+.profile .bio { display: block; color: var(--sub); font-size: 13.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.item .bio { color: var(--sub); }
+.opt-toggle { justify-self: start; }
 .revs { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--faint); }
 .revs .ava { margin-left: -4px; border: 2px solid var(--surface); }
 

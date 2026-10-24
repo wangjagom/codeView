@@ -31,6 +31,7 @@
 1. [`20261023000000_init.sql`](supabase/migrations/20261023000000_init.sql) — 기본 테이블
 2. [`20261023010000_teams.sql`](supabase/migrations/20261023010000_teams.sql) — 조 만들기·초대 코드
 3. [`20261023020000_username_login.sql`](supabase/migrations/20261023020000_username_login.sql) — 이름 로그인·알림 설정
+4. [`20261024000000_profile.sql`](supabase/migrations/20261024000000_profile.sql) — 프로필 사진·한 줄 소개 (선택)
 
 Supabase CLI를 쓴다면 `supabase link --project-ref <ref>` 후 `supabase db push`로 한 번에 돼요.
 

@@ -56,3 +56,8 @@ const read = (k: string) => { try { return localStorage.getItem(k); } catch { re
 const write = (k: string, v: string | null) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch { /* 저장 못 해도 괜찮아요 */ } };
 export const lastTeam = { get: () => read(LAST_TEAM), set: (v: string | null) => write(LAST_TEAM, v) };
 export const pendingCode = { get: () => read(PENDING_CODE), set: (v: string | null) => write(PENDING_CODE, v) };
+/** 가입할 때 적은 사진·소개. 프로필이 만들어진 뒤에 저장해요. */
+export const pendingProfile = {
+  get: (): { avatar?: string | null; bio?: string | null } | null => { try { return JSON.parse(read('codeview.pendingProfile') ?? 'null'); } catch { return null; } },
+  set: (v: { avatar?: string | null; bio?: string | null } | null) => write('codeview.pendingProfile', v ? JSON.stringify(v) : null),
+};

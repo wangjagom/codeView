@@ -1,8 +1,10 @@
 import type { Profile } from '../lib/types';
 
-export function Avatar({ person, size = 'md' }: { person: Profile; size?: 'xs' | 'md' | 'lg' }) {
+export function Avatar({ person, size = 'md' }: { person: Profile; size?: 'xs' | 'md' | 'lg' | 'xl' }) {
+  const title = person.bio ? `${person.name} · ${person.bio}` : person.name;
+  if (person.avatar) return <img className={`ava ${size} photo`} src={person.avatar} alt="" title={title} aria-hidden="true" />;
   return (
-    <span className={`ava ${size}`} style={{ background: person.color }} title={person.name} aria-hidden="true">
+    <span className={`ava ${size}`} style={{ background: person.color }} title={title} aria-hidden="true">
       {person.name.slice(0, 1)}
     </span>
   );

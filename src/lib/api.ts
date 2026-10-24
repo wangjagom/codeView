@@ -8,8 +8,19 @@ function must<T>(res: { data: T | null; error: { message: string } | null }): T 
 
 /* ---------- 프로필 ---------- */
 
+// 사진·소개 칸은 새 SQL(20261024000000_profile.sql)을 실행해야 생겨요. 아직이면 기본 칸만 읽어요.
+const BASIC_COLS = 'id, name, color';
+let profileCols = 'id, name, color, avatar, bio';
+const missingColumn = (e: { message: string; code?: string } | null) => Boolean(e && /avatar|bio/.test(e.message) && (e.code === '42703' || e.code === 'PGRST204' || /column/i.test(e.message)));
+
+async function withProfileCols<T>(run: (cols: string) => PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>): Promise<T> {
+  let res = await run(profileCols);
+  if (missingColumn(res.error) && profileCols !== BASIC_COLS) { profileCols = BASIC_COLS; res = await run(profileCols); }
+  return must(res);
+}
+
 export async function getMyProfile(userId: string): Promise<Profile | null> {
-  const rows = must(await supabase.from('profiles').select('id, name, color').eq('id', userId)) as Profile[];
+  const rows = await withProfileCols((cols) => supabase.from('profiles').select(cols).eq('id', userId)) as unknown as Profile[];
   return rows[0] ?? null;
 }
 
@@ -17,7 +28,7 @@ export async function createProfile(id: string, name: string, color: string): Pr
   must(await supabase.from('profiles').insert({ id, name, color }));
 }
 
-export async function updateProfile(id: string, patch: Partial<Pick<Profile, 'name' | 'color'>>): Promise<void> {
+export async function updateProfile(id: string, patch: Partial<Pick<Profile, 'color' | 'avatar' | 'bio'>>): Promise<void> {
   must(await supabase.from('profiles').update(patch).eq('id', id));
 }
 
@@ -44,7 +55,7 @@ export async function listMyTeams(userId: string): Promise<(Team & { role: Role 
 }
 
 export async function listMembers(teamId: string): Promise<Member[]> {
-  const rows = must(await supabase.from('team_memberships').select('role, joined_at, profiles(id, name, color)').eq('team_id', teamId).order('joined_at')) as unknown as { role: Role; joined_at: string; profiles: Profile | null }[];
+  const rows = await withProfileCols((cols) => supabase.from('team_memberships').select(`role, joined_at, profiles(${cols})`).eq('team_id', teamId).order('joined_at')) as unknown as { role: Role; joined_at: string; profiles: Profile | null }[];
   return rows.filter((r) => r.profiles).map((r) => ({ ...(r.profiles as Profile), role: r.role, joined_at: r.joined_at }));
 }
 
@@ -164,6 +175,9 @@ export function friendlyError(e: unknown): string {
   if (/Email logins are disabled|Email provider is disabled|email_provider_disabled/i.test(msg)) return 'Supabase에서 Email 로그인 방식이 꺼져 있어요. 켜 주세요. (README 참고)';
   if (/Email address .* is invalid|email_address_invalid/i.test(msg)) return 'Supabase에서 가입 확인 메일을 보내려고 해서 막혔어요. Authentication → Sign In / Providers → Email 에서 Confirm email을 꺼 주세요.';
   if (/Email not confirmed/i.test(msg)) return 'Supabase에서 Confirm email을 꺼 주세요. (README 참고)';
+  if (/(avatar|bio)/.test(msg) && /column/i.test(msg)) return '사진·소개를 저장하려면 Supabase에서 새 SQL(20261024000000_profile.sql)을 먼저 실행해야 해요.';
+  if (/profiles_avatar_format/.test(msg)) return '이 사진은 저장할 수 없어요. 다른 이미지를 골라 주세요.';
+  if (/profiles_bio_length/.test(msg)) return '소개는 80자까지예요.';
   if (/profiles_name_format/.test(msg)) return '이름은 한글, 영문, 숫자와 _ . - 로 2~20자만 쓸 수 있어요.';
   if (/Invalid path specified/.test(msg)) return 'Supabase 주소 설정이 잘못됐어요. VITE_SUPABASE_URL에 https://<프로젝트>.supabase.co 만 넣어 주세요.';
   if (/Invalid API key|No API key/i.test(msg)) return 'Supabase 키 설정이 잘못됐어요. VITE_SUPABASE_ANON_KEY에 anon(public) 키를 넣어 주세요.';

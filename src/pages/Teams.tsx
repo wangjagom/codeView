@@ -113,6 +113,7 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
               <Avatar person={p} />
               <span className="body">
                 <span className="t">{p.name}{p.id === me.id ? ' (나)' : ''}{p.role === 'owner' && <span className="role">조장</span>}</span>
+                {p.bio && <span className="m bio">{p.bio}</span>}
                 <span className="m">올린 코드 {posts.filter((x) => x.author_id === p.id).length}개 · 이번 주 리뷰 {given}개</span>
               </span>
               {isOwner && p.id !== me.id && (

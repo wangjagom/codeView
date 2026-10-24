@@ -4,6 +4,10 @@ export interface Profile {
   id: string;
   name: string;
   color: string;
+  /** 프로필 사진 (data URL, 선택) */
+  avatar?: string | null;
+  /** 한 줄 소개 (선택) */
+  bio?: string | null;
 }
 
 export type Role = 'owner' | 'member';

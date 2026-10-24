@@ -7,6 +7,7 @@ import { MIN_PASSWORD } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { ColorPicker } from './Auth';
+import { ProfileFields } from '../components/ProfileFields';
 
 function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: (v: boolean) => void }) {
   return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
@@ -15,7 +16,22 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
 export function Me({ onTeam }: { onTeam: () => void }) {
   const { me, refresh, toast, signOut } = useStore();
   const [color, setColor] = useState(me.color);
-  const [openColor, setOpenColor] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(me.avatar ?? null);
+  const [bio, setBio] = useState(me.bio ?? '');
+  const [openEdit, setOpenEdit] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const profileDirty = color !== me.color || avatar !== (me.avatar ?? null) || bio.trim() !== (me.bio ?? '');
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const patch: { color?: string; avatar?: string | null; bio?: string | null } = {};
+      if (color !== me.color) patch.color = color;
+      if (avatar !== (me.avatar ?? null)) patch.avatar = avatar;
+      if (bio.trim() !== (me.bio ?? '')) patch.bio = bio.trim() || null;
+      await updateProfile(me.id, patch); await refresh(); setOpenEdit(false); toast('프로필을 저장했어요');
+    } catch (x) { toast(friendlyError(x)); }
+    setSaving(false);
+  };
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [openPw, setOpenPw] = useState(false);
@@ -52,16 +68,21 @@ export function Me({ onTeam }: { onTeam: () => void }) {
       <Header onTeam={onTeam} />
 
       <div className="card profile">
-        <Avatar person={{ ...me, color }} size="lg" />
-        <div className="body"><b>{me.name}</b><span className="muted small">로그인 이름은 바꿀 수 없어요</span></div>
-        <button type="button" className="btn sm" aria-expanded={openColor} onClick={() => setOpenColor(!openColor)}>색 바꾸기</button>
+        <Avatar person={{ ...me, color, avatar }} size="lg" />
+        <div className="body"><b>{me.name}</b>{me.bio ? <span className="bio">{me.bio}</span> : <span className="muted small">소개 없음</span>}</div>
+        <button type="button" className="btn sm" aria-expanded={openEdit} onClick={() => {
+          if (openEdit) { setColor(me.color); setAvatar(me.avatar ?? null); setBio(me.bio ?? ''); }
+          setOpenEdit(!openEdit);
+        }}>{openEdit ? '닫기' : '프로필 편집'}</button>
       </div>
-      {openColor && (
+      {openEdit && (
         <div className="card card-pad stack">
+          <ProfileFields name={me.name} color={color} avatar={avatar} bio={bio} onError={toast}
+            onChange={(p) => { if ('avatar' in p) setAvatar(p.avatar ?? null); if (p.bio !== undefined) setBio(p.bio); }} />
+          <span className="lbl">색 <span className="muted">(사진이 없을 때)</span></span>
           <ColorPicker value={color} onChange={setColor} name={me.name} />
-          <button type="button" className="btn primary wide" disabled={color === me.color} onClick={async () => {
-            try { await updateProfile(me.id, { color }); await refresh(); setOpenColor(false); toast('색을 바꿨어요'); } catch (x) { toast(friendlyError(x)); }
-          }}>저장</button>
+          <span className="muted small">로그인 이름은 바꿀 수 없어요 · 사진·소개는 선택이에요</span>
+          <button type="button" className="btn primary wide pf-save" disabled={!profileDirty || saving} onClick={saveProfile}>{saving ? '저장 중…' : '저장'}</button>
         </div>
       )}
 

@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { createProfile, friendlyError } from '../lib/api';
 import { PALETTE } from '../lib/config';
+import { pendingProfile } from '../lib/store';
+import { ProfileFields } from '../components/ProfileFields';
 import { MIN_PASSWORD, nameProblem, normalizeName, signInWithName, signUpWithName } from '../lib/auth';
 
 export function AuthCard({ children, wide }: { children: ReactNode; wide?: boolean }) {
@@ -20,6 +22,9 @@ export function Login({ invited }: { invited?: boolean }) {
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [color, setColor] = useState(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+  const [openProfile, setOpenProfile] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [bio, setBio] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -35,8 +40,10 @@ export function Login({ invited }: { invited?: boolean }) {
       if (error) { setErr(friendlyError(error)); setBusy(false); }
       return;
     }
+    // 사진·소개는 프로필이 만들어진 뒤에 App이 저장해요.
+    pendingProfile.set(avatar || bio.trim() ? { avatar, bio: bio.trim() || null } : null);
     const { data, error } = await signUpWithName(name, password, color);
-    if (error) { setErr(friendlyError(error)); setBusy(false); return; }
+    if (error) { pendingProfile.set(null); setErr(friendlyError(error)); setBusy(false); return; }
     if (!data.session) { setErr('가입은 됐지만 바로 로그인되지 않았어요. Supabase에서 Confirm email을 꺼 주세요. (README 참고)'); setBusy(false); }
   };
 
@@ -61,6 +68,11 @@ export function Login({ invited }: { invited?: boolean }) {
             <input id="loginPw2" type="password" value={password2} autoComplete="new-password" onChange={(e) => setPassword2(e.target.value)} />
             <span className="lbl">아바타 색</span>
             <ColorPicker value={color} onChange={setColor} name={name} />
+            <button type="button" className="btn ghost sm opt-toggle" aria-expanded={openProfile} onClick={() => setOpenProfile(!openProfile)}>
+              {openProfile ? '사진·소개 접기' : '+ 사진·소개 (선택)'}
+            </button>
+            {openProfile && <ProfileFields name={name} color={color} avatar={avatar} bio={bio} onError={setErr}
+              onChange={(p) => { if ('avatar' in p) setAvatar(p.avatar ?? null); if (p.bio !== undefined) setBio(p.bio); }} />}
           </>
         )}
         {err && <p className="err" role="alert">{err}</p>}
