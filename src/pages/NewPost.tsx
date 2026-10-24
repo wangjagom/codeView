@@ -93,6 +93,15 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
     const next = files.filter((_, j) => j !== i);
     setAllFiles(next.length ? next : [newFile()], Math.max(0, Math.min(active > i ? active - 1 : active, next.length - 1)));
   };
+  // '빼기?'를 띄운 뒤 그 버튼 말고 다른 곳을 누르거나 Esc면 취소해요.
+  useEffect(() => {
+    if (!confirmRemove) return;
+    const onDown = (e: PointerEvent) => { if (!(e.target as Element).closest?.(`[data-remove="${confirmRemove}"]`)) setConfirmRemove(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmRemove(null); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [confirmRemove]);
   const applySet = (setId: string) => {
     const set = templateSetFiles(setId);
     // 비어 있는 파일은 세트로 바꾸고, 코드가 있는 파일은 그대로 앞에 둬요.
@@ -223,7 +232,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
                     <LangIcon lang={f.lang} size={16} />{f.name.trim() || `파일 ${i + 1}`}
                     {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
                   </button>
-                  {files.length > 1 && <button type="button" className="ftab-x" aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? (reviewsIn(f) > 0 ? `리뷰 ${reviewsIn(f)}개도 빼기?` : '빼기?') : '×'}</button>}
+                  {files.length > 1 && <button type="button" className="ftab-x" data-remove={f.id} aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? (reviewsIn(f) > 0 ? `리뷰 ${reviewsIn(f)}개도 빼기?` : '빼기?') : '×'}</button>}
                 </span>
               );
             })}
