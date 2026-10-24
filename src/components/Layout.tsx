@@ -13,7 +13,7 @@ const TAB_VIEWS = new Set(['feed', 'join', 'team', 'me']);
 const TABS = [
   { view: 'feed', label: '홈', icon: 'home', to: href({ name: 'feed' }) },
   { view: 'new', label: '올리기', icon: 'plus', to: href({ name: 'new' }) },
-  { view: 'team', label: '내 조', icon: 'team', to: href({ name: 'team' }) },
+  { view: 'team', label: '내 팀', icon: 'team', to: href({ name: 'team' }) },
   { view: 'me', label: '내 정보', icon: 'me', to: href({ name: 'me' }) },
 ] as const;
 
@@ -45,7 +45,7 @@ export function Layout({ view, sheet, onSheet, children }: {
   );
 }
 
-/** 탭 화면 위쪽: 로고 자리(비워 둠) + 서비스 이름 + 조 바꾸기 */
+/** 탭 화면 위쪽: 로고 자리(비워 둠) + 서비스 이름 + 팀 바꾸기 */
 export function Header({ onTeam }: { onTeam: () => void }) {
   const { team } = useStore();
   return (
@@ -62,7 +62,7 @@ export function BackBar({ label = '목록', to = href({ name: 'feed' }) }: { lab
   return <a className="back" href={to}><Icon name="back" />{label}</a>;
 }
 
-/** 아래에서 올라오는 조 고르기 */
+/** 아래에서 올라오는 팀 고르기 */
 function TeamSheet({ onClose }: { onClose: () => void }) {
   const { team, teams, switchTeam } = useStore();
   useEffect(() => {
@@ -72,24 +72,24 @@ function TeamSheet({ onClose }: { onClose: () => void }) {
   }, [onClose]);
   return (
     <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="sheet" role="dialog" aria-label="조 고르기">
-        <h3>조 고르기</h3>
+      <div className="sheet" role="dialog" aria-label="팀 고르기">
+        <h3>팀 고르기</h3>
         <div className="sheet-list">
           {teams.map((t) => (
             <button key={t.id} type="button" className="item" onClick={() => { onClose(); switchTeam(t.id); }}>
-              <span className="body"><span className="t">{t.name}</span><span className="m">{ROLE_LABEL[t.role] ?? '조원'}</span></span>
-              {t.id === team.id && <span className="check-mark" aria-label="지금 보는 조">✓</span>}
+              <span className="body"><span className="t">{t.name}</span><span className="m">{ROLE_LABEL[t.role] ?? '팀원'}</span></span>
+              {t.id === team.id && <span className="check-mark" aria-label="지금 보는 팀">✓</span>}
             </button>
           ))}
         </div>
-        <button type="button" className="btn soft wide" onClick={() => { onClose(); navigate({ name: 'teams' }); }}>초대 코드로 참여 · 새 조 만들기</button>
+        <button type="button" className="btn soft wide" onClick={() => { onClose(); navigate({ name: 'teams' }); }}>초대 코드로 참여 · 새 팀 만들기</button>
         <button type="button" className="btn wide" onClick={() => { onClose(); navigate({ name: 'team' }); }}>{team.name} 설정 · 초대하기</button>
       </div>
     </div>
   );
 }
 
-/** 이번 주 조 현황 (내 조 화면에서 보여 줘요) */
+/** 이번 주 팀 현황 (내 팀 화면에서 보여 줘요) */
 export function WeekStats() {
   const { profiles, posts, comments } = useStore();
   const since = weekStart();

@@ -51,11 +51,11 @@ export default function App() {
   const loadTeamData = useCallback(async (tid: string) => {
     const [mem, po] = await Promise.all([listMembers(tid), listPosts(tid)]);
     const cm = await listCommentsLite(po.map((p) => p.id));
-    if (teamRef.current !== tid) return; // 그 사이 다른 조로 바꿨어요
+    if (teamRef.current !== tid) return; // 그 사이 다른 팀으로 바꿨어요
     setProfiles(mem); setPosts(po); setComments(cm);
   }, []);
 
-  /** 조 목록을 다시 읽고 보여 줄 조를 골라요. */
+  /** 팀 목록을 다시 읽고 보여 줄 팀을 골라요. */
   const pickTeam = useCallback(async (userId: string, prefer?: string | null) => {
     const list = await listMyTeams(userId);
     setTeams(list);
@@ -121,7 +121,7 @@ export default function App() {
     pickTeam(session.user.id, id).then(() => navigate({ name: 'feed' })).catch((e) => toast(friendlyError(e)));
   }, [session, pickTeam, toast]);
 
-  // 조원이 글이나 리뷰를 남기면 목록과 열린 화면을 다시 불러와요.
+  // 팀원이 글이나 리뷰를 남기면 목록과 열린 화면을 다시 불러와요.
   useEffect(() => {
     if (phase !== 'ready' || !teamId) return;
     let timer = 0;
@@ -155,7 +155,7 @@ export default function App() {
     return (
       <>
         <AuthCard wide>
-          <h1 className="h-big">조 참여</h1>
+          <h1 className="h-big">팀 참여</h1>
           <TeamForms initialError={joinError} onDone={async (t) => { setJoinError(''); await pickTeam(session.user.id, t.id); if (t.created_by === session.user.id) navigate({ name: 'team' }); }} />
           <button type="button" className="btn ghost sm" onClick={signOut}>로그아웃</button>
         </AuthCard>

@@ -13,7 +13,7 @@ import { Dots, useFlip } from '../components/Motion';
 
 const ROLES: Role[] = ['owner', 'vice', 'member'];
 
-/** 조장·부조장·조원 고르기. 이미 누가 맡은 자리는 고를 수 없어요. */
+/** 팀장·부팀장·팀원 고르기. 이미 누가 맡은 자리는 고를 수 없어요. */
 export function RolePicker({ value, onChange, taken = {}, label = '내 직책' }: {
   value: Role; onChange: (r: Role) => void; taken?: Partial<Record<Role, boolean>>; label?: string;
 }) {
@@ -28,7 +28,7 @@ export function RolePicker({ value, onChange, taken = {}, label = '내 직책' }
   );
 }
 
-/** 조 만들기 + 초대 코드로 참여하기. 첫 화면과 '#/teams' 화면에서 같이 써요. */
+/** 팀 만들기 + 초대 코드로 참여하기. 첫 화면과 '#/teams' 화면에서 같이 써요. */
 export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, joined: boolean) => void; initialError?: string }) {
   const [name, setName] = useState('');
   const [tasks, setTasks] = useState<string[]>(COURSE_TASKS);
@@ -40,7 +40,7 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
   const [peek, setPeek] = useState<TeamPeek | null>(null);
   const clean = code.replace(/\s|-/g, '').toUpperCase();
 
-  // 코드 8자리를 다 치면 어느 조인지, 조장·부조장 자리가 비었는지 미리 봐요.
+  // 코드 8자리를 다 치면 어느 팀인지, 팀장·부팀장 자리가 비었는지 미리 봐요.
   useEffect(() => {
     setPeek(null);
     if (clean.length !== 8) return;
@@ -56,7 +56,7 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
   }, [clean]);
 
   const create = async () => {
-    if (!name.trim()) { setErr('조 이름을 적어 주세요.'); document.getElementById('teamName')?.focus(); return; }
+    if (!name.trim()) { setErr('팀 이름을 적어 주세요.'); document.getElementById('teamName')?.focus(); return; }
     setBusy('create'); setErr('');
     try { const t = await createTeam(name.trim(), tasks.length ? tasks : DEFAULT_TASKS, createRole); pendingCode.set(null); onDone(t, false); }
     catch (e) { setErr(friendlyError(e)); setBusy(null); }
@@ -74,40 +74,40 @@ export function TeamForms({ onDone, initialError = '' }: { onDone: (team: Team, 
         <h2>초대 코드로 참여하기</h2>
                 <label htmlFor="inviteCode" className="lbl">초대 코드</label>
         <input id="inviteCode" className="code-input" value={code} maxLength={12} autoComplete="off" placeholder="ABCD2345" onChange={(e) => { setCode(e.target.value.toUpperCase()); setErr(''); }} />
-        {peek && <p className="peek"><b>{peek.name}</b> · 조원 {peek.members}명{peek.joined && <span className="muted"> · 이미 들어가 있는 조예요</span>}</p>}
+        {peek && <p className="peek"><b>{peek.name}</b> · 팀원 {peek.members}명{peek.joined && <span className="muted"> · 이미 들어가 있는 팀이에요</span>}</p>}
         <span className="lbl">직책</span>
         <RolePicker value={joinRole} onChange={setJoinRole} taken={{ owner: peek?.owner_taken, vice: peek?.vice_taken }} />
         <button className="btn primary wide" disabled={busy !== null || Boolean(peek?.joined)}>{busy === 'join' ? <>참여하는 중<Dots /></> : peek ? `${ROLE_LABEL[joinRole]}으로 참여` : '참여하기'}</button>
       </form>
       <form className="tf-card" onSubmit={(e) => { e.preventDefault(); create(); }}>
-        <h2>새 조 만들기</h2>
-        <label htmlFor="teamName" className="lbl">조 이름</label>
-        <input id="teamName" value={name} maxLength={40} placeholder="예: 프론트엔드 7기 3조" onChange={(e) => setName(e.target.value)} />
+        <h2>새 팀 만들기</h2>
+        <label htmlFor="teamName" className="lbl">팀 이름</label>
+        <input id="teamName" value={name} maxLength={40} placeholder="예: SAP 3기 3팀" onChange={(e) => setName(e.target.value)} />
         <label htmlFor="teamTasks" className="lbl">과제 <span className="muted">(나중에 바꿀 수 있어요)</span></label>
         <TaskEditor id="teamTasks" value={tasks} onChange={setTasks} />
-        <span className="lbl">내 직책 <span className="muted">(조장·부조장은 조를 관리할 수 있어요)</span></span>
+        <span className="lbl">내 직책 <span className="muted">(팀장·부팀장은 팀을 관리할 수 있어요)</span></span>
         <RolePicker value={createRole} onChange={setCreateRole} />
-        <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? <>만드는 중<Dots /></> : '조 만들기'}</button>
+        <button className="btn wide" disabled={busy !== null}>{busy === 'create' ? <>만드는 중<Dots /></> : '팀 만들기'}</button>
       </form>
       {err && <p className="err" role="alert">{err}</p>}
     </div>
   );
 }
 
-/** '#/teams' — 이미 조가 있는 사람이 다른 조를 만들거나 참여할 때 */
+/** '#/teams' — 이미 팀이 있는 사람이 다른 팀을 만들거나 참여할 때 */
 export function TeamsPage() {
   const { teams, reloadTeams, toast } = useStore();
   return (
     <section>
       <BackBar label="닫기" />
-      <h1 className="h-big tight">조 추가</h1>
-      <p className="muted small lead">속한 조 {teams.length}개</p>
-      <TeamForms onDone={async (t, joined) => { await reloadTeams(t.id); toast(joined ? `'${t.name}'에 참여했어요` : `'${t.name}'을 만들었어요`); navigate(joined ? { name: 'feed' } : { name: 'team' }); }} />
+      <h1 className="h-big tight">팀 추가</h1>
+      <p className="muted small lead">속한 팀 {teams.length}개</p>
+      <TeamForms onDone={async (t, joined) => { await reloadTeams(t.id); toast(joined ? `'${t.name}'에 참여했어요` : `'${t.name}' 팀을 만들었어요`); navigate(joined ? { name: 'feed' } : { name: 'team' }); }} />
     </section>
   );
 }
 
-/** '#/team' — 지금 조 설정 (초대, 조원 관리, 이름·과제 바꾸기, 나가기) */
+/** '#/team' — 지금 팀 설정 (초대, 팀원 관리, 이름·과제 바꾸기, 나가기) */
 export function TeamSettings({ onTeam }: { onTeam: () => void }) {
   const { me, team, isOwner, profiles, posts, comments, reloadTeams, toast } = useStore();
   const [name, setName] = useState(team.name);
@@ -131,8 +131,8 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
       <Header onTeam={onTeam} />
       <h1 className="h-big">{team.name}</h1>
 
-      <section className="invite" aria-label="조원 초대하기">
-        <span className="lab">조원 초대하기</span>
+      <section className="invite" aria-label="팀원 초대하기">
+        <span className="lab">팀원 초대하기</span>
         <span className="invite-code" aria-label={`초대 코드 ${team.invite_code}`}>{pretty}</span>
         <div className="acts">
           <CopyButton className="big white" text={() => team.invite_code} label="코드 복사" onFail={toast} />
@@ -140,7 +140,7 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
         </div>
       </section>
 
-      <div className="sec-h"><h2>내 직책</h2><span className="muted small">조장·부조장은 조를 관리할 수 있어요</span></div>
+      <div className="sec-h"><h2>내 직책</h2><span className="muted small">팀장·부팀장은 팀을 관리할 수 있어요</span></div>
       <div className="card card-pad">
         <RolePicker value={myRole} taken={{ owner: Boolean(holder('owner')), vice: Boolean(holder('vice')) }}
           onChange={(r) => { if (r !== myRole) run(() => setMyRole(team.id, r), `${ROLE_LABEL[r]}으로 바꿨어요`); }} />
@@ -151,7 +151,7 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
 
       <WeekStats />
 
-      <div className="sec-h"><h2>조원 {profiles.length}명</h2>{isOwner && <button type="button" onClick={() => run(() => regenerateInvite(team.id), '새 초대 코드를 만들었어요. 이전 링크는 이제 쓸 수 없어요')}>새 초대 코드</button>}</div>
+      <div className="sec-h"><h2>팀원 {profiles.length}명</h2>{isOwner && <button type="button" onClick={() => run(() => regenerateInvite(team.id), '새 초대 코드를 만들었어요. 이전 링크는 이제 쓸 수 없어요')}>새 초대 코드</button>}</div>
       <div className="card list" ref={memberRef}>
         {profiles.map((p) => {
           const given = reviewsGivenThisWeek(p.id, posts, comments);
@@ -183,8 +183,8 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
 
       <div className="sec-h"><h2>과제</h2>{isOwner && <button type="button" onClick={() => { if (!editing) { setTasks(team.tasks); setName(team.name); } setEditing(!editing); }}>{editing ? '닫기' : '편집'}</button>}</div>
       {editing && isOwner ? (
-        <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: tasks.length ? tasks : DEFAULT_TASKS }), '조 정보를 저장했어요')) setEditing(false); }}>
-          <div className="field"><label htmlFor="setName">조 이름</label><input className="inp" id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
+        <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: tasks.length ? tasks : DEFAULT_TASKS }), '팀 정보를 저장했어요')) setEditing(false); }}>
+          <div className="field"><label htmlFor="setName">팀 이름</label><input className="inp" id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
           <div className="field"><label htmlFor="setTasks">과제</label><TaskEditor id="setTasks" value={tasks} onChange={setTasks} />
             <span className="hint">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요.</span></div>
           <button className="btn primary wide">저장</button>
@@ -197,16 +197,16 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
 
       <div className="foot-acts">
         {confirm === 'leave' ? (
-          <div className="danger"><span>{team.name}에서 나갈까요? 내가 올린 코드와 리뷰는 조에 남아요.{profiles.length === 1 ? ' 마지막 조원이라 조가 지워져요.' : ''}</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
+          <div className="danger"><span>{team.name}에서 나갈까요? 내가 올린 코드와 리뷰는 팀에 남아요.{profiles.length === 1 ? ' 마지막 팀원이라 팀이 지워져요.' : ''}</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
             <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => removeMember(team.id, me.id), `${team.name}에서 나왔어요`)) navigate({ name: 'feed' }); }}>나가기</button></div>
         ) : confirm === 'delete' ? (
-          <div className="danger"><span>조와 모든 코드·리뷰를 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
-            <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => deleteTeam(team.id), `${team.name}을 지웠어요`)) navigate({ name: 'feed' }); }}>조 삭제</button></div>
+          <div className="danger"><span>팀과 모든 코드·리뷰를 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirm(null)}>취소</button>
+            <button type="button" className="btn sm danger-btn" onClick={async () => { if (await run(() => deleteTeam(team.id), `'${team.name}' 팀을 지웠어요`)) navigate({ name: 'feed' }); }}>팀 삭제</button></div>
         ) : (
           <>
-            <button type="button" className="txt-btn" onClick={onTeam}>다른 조로 가기</button>
-            <button type="button" className="txt-btn red" onClick={() => setConfirm('leave')}>조 나가기</button>
-            {isOwner && <button type="button" className="txt-btn red" onClick={() => setConfirm('delete')}>조 삭제</button>}
+            <button type="button" className="txt-btn" onClick={onTeam}>다른 팀으로 가기</button>
+            <button type="button" className="txt-btn red" onClick={() => setConfirm('leave')}>팀 나가기</button>
+            {isOwner && <button type="button" className="txt-btn red" onClick={() => setConfirm('delete')}>팀 삭제</button>}
           </>
         )}
       </div>

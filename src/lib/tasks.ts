@@ -1,7 +1,7 @@
 /** 과제 목록 규칙: 이름 1~40자, 30개까지, 같은 이름(띄어쓰기·대소문자 무시)은 하나만. */
 export const TASK_MAX = 30;
 export const TASK_NAME_MAX = 40;
-/** 부트캠프 과정 모듈 (조를 처음 만들 때 기본으로 넣어 둬요) */
+/** 부트캠프 과정 모듈 (팀을 처음 만들 때 기본으로 넣어 둬요) */
 export const COURSE_TASKS = ['1. UI 프로그래밍', '2. Back-End (ABAP)', '3. Clean Core Back-End', '4. Clean Core UI', '5. 프로젝트', '자유 질문'];
 
 /** 비교용: 띄어쓰기·문장부호를 빼고 소문자로 */

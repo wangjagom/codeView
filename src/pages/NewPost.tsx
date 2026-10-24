@@ -134,7 +134,7 @@ export function NewPost() {
               <button key={p.id} type="button" className="pick" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>
                 <Avatar person={p} size="lg" />{p.name}
               </button>
-            )) : <span className="muted">다른 조원이 없어요 · <a href={href({ name: 'team' })}>초대하기</a></span>}
+            )) : <span className="muted">다른 팀원이 없어요 · <a href={href({ name: 'team' })}>초대하기</a></span>}
           </div>
         </div>
         <p className="muted small">작성 중인 내용은 이 브라우저에 자동 저장돼요</p>

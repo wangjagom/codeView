@@ -57,7 +57,7 @@ export function Feed({ filter, task, onFilter, onTask, onTeam }: {
       <div className="card list" ref={listRef}>
         {list.length ? list.map((p) => <PostItem key={p.id} post={p} />) : (
           <div className="empty">
-            {posts.length ? '해당하는 코드가 없어요' : <>올라온 코드가 없어요<br /><a href={href({ name: 'new' })}>코드 올리기</a>{profiles.length < 2 && <> · <a href={href({ name: 'team' })}>조원 초대하기</a></>}</>}
+            {posts.length ? '해당하는 코드가 없어요' : <>올라온 코드가 없어요<br /><a href={href({ name: 'new' })}>코드 올리기</a>{profiles.length < 2 && <> · <a href={href({ name: 'team' })}>팀원 초대하기</a></>}</>}
           </div>
         )}
       </div>

@@ -5,20 +5,20 @@ export type MyTeam = Team & { role: Role };
 
 export interface Store {
   me: Profile;
-  /** 지금 보고 있는 조 */
+  /** 지금 보고 있는 팀 */
   team: MyTeam;
-  /** 내가 속한 모든 조 */
+  /** 내가 속한 모든 팀 */
   teams: MyTeam[];
-  /** 조장·부조장이면 조를 관리할 수 있어요 */
+  /** 팀장·부팀장이면 팀을 관리할 수 있어요 */
   isOwner: boolean;
-  /** 지금 조의 조원 (나 포함) */
+  /** 지금 팀의 팀원 (나 포함) */
   profiles: Member[];
   person: (id: string) => Profile;
   posts: Post[];
   comments: CommentLite[];
-  /** 서버에서 지금 조의 목록을 다시 불러와요. */
+  /** 서버에서 지금 팀의 목록을 다시 불러와요. */
   refresh: () => Promise<void>;
-  /** 조 정보·조 목록을 다시 불러와요. 조를 나가거나 지웠을 때도 써요. */
+  /** 팀 정보·팀 목록을 다시 불러와요. 팀을 나가거나 지웠을 때도 써요. */
   reloadTeams: (preferTeamId?: string) => Promise<void>;
   switchTeam: (teamId: string) => void;
   /** 실시간 변경이 올 때마다 바뀌는 숫자. 상세 화면이 다시 불러올 때 써요. */
@@ -35,7 +35,7 @@ export function useStore(): Store {
   return s;
 }
 
-const UNKNOWN: Profile = { id: '', name: '나간 조원', color: '#8a919d' };
+const UNKNOWN: Profile = { id: '', name: '나간 팀원', color: '#8a919d' };
 
 export function makePerson(profiles: Profile[]) {
   const map = new Map(profiles.map((p) => [p.id, p]));
@@ -50,7 +50,7 @@ export function isMyTurn(post: Post, meId: string, comments: CommentLite[]): boo
     && !comments.some((c) => c.post_id === post.id && c.author_id === meId);
 }
 
-/* 마지막으로 본 조와 초대 링크로 받은 코드는 이 브라우저에만 기억해요. */
+/* 마지막으로 본 팀과 초대 링크로 받은 코드는 이 브라우저에만 기억해요. */
 const LAST_TEAM = 'codeview:team';
 const PENDING_CODE = 'codeview:join';
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };

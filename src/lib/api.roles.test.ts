@@ -20,7 +20,7 @@ describe('team roles fallback', () => {
     expect(calls).toEqual([{ p_name: '3조', p_tasks: ['a'], p_role: 'member' }, { p_name: '3조', p_tasks: ['a'] }]);
   });
   it('자리가 차 있으면 알려 줘요', () => {
-    expect(friendlyError({ message: 'owner taken' })).toContain('이미 조장이 있어요');
-    expect(friendlyError({ message: 'duplicate key value violates unique constraint "team_one_vice"' })).toContain('이미 부조장이 있어요');
+    expect(friendlyError({ message: 'owner taken' })).toContain('이미 팀장이 있어요');
+    expect(friendlyError({ message: 'duplicate key value violates unique constraint "team_one_vice"' })).toContain('이미 부팀장이 있어요');
   });
 });
