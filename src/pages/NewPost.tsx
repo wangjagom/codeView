@@ -74,7 +74,8 @@ export function NewPost() {
         <div className="field">
           <label htmlFor="nCode">코드</label>
           <div className="paste">
-            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="여기에 코드를 붙여넣어요" onToast={toast}
+            <CodeEditor id="nCode" value={code} lang={lang} problems={problems} placeholder="여기에 코드를 붙여넣거나, 위에서 기본 코드를 골라요" onToast={toast}
+              fileName={file} onTemplate={(f, l, c) => { const nf = file.trim() ? file : f; setFile(nf); setLang(l); setLangAuto(false); persist({ file: nf, lang: l, code: c }); }}
               onChange={(v) => { setCode(v); const g = langAuto ? langFromCode(v) : null; if (g) setLang(g); persist({ code: v, ...(g ? { lang: g } : {}) }); }} />
             <div className="check" aria-live="polite">
               {!code.trim() ? <span className="muted">코드를 붙여넣으면 바로 검사해요</span>

@@ -1,7 +1,8 @@
 import { keywordsFor } from './highlight';
+import { fillTemplate, templatesFor } from './templates';
 
 /** 자동완성 항목 종류. 목록 왼쪽 아이콘과 정렬 순서에 써요. */
-export type Kind = 'snip' | 'kw' | 'tag' | 'attr' | 'prop' | 'val' | 'fn' | 'word';
+export type Kind = 'tpl' | 'snip' | 'kw' | 'tag' | 'attr' | 'prop' | 'val' | 'fn' | 'cls' | 'mod' | 'word';
 
 export interface Item {
   label: string;
@@ -140,8 +141,42 @@ const JS_MEMBERS = plain('fn', [
   'addStyleClass', 'removeStyleClass', 'destroy', 'read', 'create', 'update', 'remove', 'submitChanges', 'extend', 'show',
   'push', 'pop', 'map', 'forEach', 'find', 'findIndex', 'includes', 'indexOf', 'join', 'slice', 'splice', 'sort', 'reduce', 'some', 'every',
   'length', 'trim', 'split', 'replace', 'toUpperCase', 'toLowerCase', 'startsWith', 'endsWith', 'toFixed', 'then', 'catch',
+  'attachInit', 'placeAt', 'addContent', 'addItem', 'addPage', 'getCore', 'byId',
   'log', 'error', 'warn', 'stringify', 'parse', 'keys', 'values', 'entries', 'assign', 'querySelector', 'addEventListener',
 ]);
+
+/** sap.m.Button 처럼 전체 이름으로 쓸 때 점 뒤에 나올 것들 (기초 수업 방식) */
+const nsItems = (mods: string, classes: string, fns = ''): Item[] => [
+  ...plain('mod', mods.split(' ').filter(Boolean), '네임스페이스'),
+  ...plain('cls', classes.split(' ').filter(Boolean)),
+  ...plain('fn', fns.split(' ').filter(Boolean)),
+];
+const UI5_NS: Record<string, Item[]> = {
+  sap: nsItems('ui m f uxap tnt ushell', ''),
+  'sap.ui': nsItems('core model layout table unified base', 'Device', 'define require getCore controller xmlview jsonview view'),
+  'sap.ui.core': nsItems('mvc routing format', 'UIComponent Control Element Fragment Icon Item HTML BusyIndicator Core'),
+  'sap.ui.core.mvc': nsItems('', 'Controller XMLView View JSONView'),
+  'sap.ui.core.routing': nsItems('', 'History Router'),
+  'sap.ui.core.format': nsItems('', 'DateFormat NumberFormat'),
+  'sap.ui.model': nsItems('json odata resource', 'Filter FilterOperator Sorter BindingMode'),
+  'sap.ui.model.json': nsItems('', 'JSONModel'),
+  'sap.ui.model.odata': nsItems('v2 v4', 'ODataModel'),
+  'sap.ui.model.odata.v2': nsItems('', 'ODataModel'),
+  'sap.ui.model.odata.v4': nsItems('', 'ODataModel'),
+  'sap.ui.model.resource': nsItems('', 'ResourceModel'),
+  'sap.ui.model.FilterOperator': plain('val', ['EQ', 'NE', 'Contains', 'NotContains', 'StartsWith', 'EndsWith', 'BT', 'GT', 'GE', 'LT', 'LE']),
+  'sap.ui.layout': nsItems('form', 'Grid HorizontalLayout VerticalLayout FixFlex'),
+  'sap.ui.layout.form': nsItems('', 'SimpleForm Form FormContainer FormElement ResponsiveGridLayout'),
+  'sap.ui.table': nsItems('', 'Table Column TreeTable RowAction RowActionItem'),
+  'sap.m': nsItems('routing', `App Page Shell SplitApp NavContainer Button Text Title Label Input TextArea CheckBox RadioButton RadioButtonGroup
+    Select ComboBox MultiComboBox DatePicker TimePicker Switch Slider StepInput SearchField Link Image Table Column ColumnListItem List
+    StandardListItem ObjectListItem CustomListItem VBox HBox FlexBox Panel ScrollContainer Toolbar OverflowToolbar ToolbarSpacer Bar
+    Dialog Popover BusyDialog MessageToast MessageBox MessageStrip IconTabBar IconTabFilter ObjectHeader ObjectIdentifier ObjectNumber
+    ObjectStatus ObjectAttribute Carousel Wizard WizardStep GenericTile TileContent NumericContent Avatar`),
+  'sap.m.MessageToast': plain('fn', ['show']),
+  'sap.m.MessageBox': nsItems('', '', 'show alert confirm error information success warning'),
+  'sap.f': nsItems('', 'DynamicPage DynamicPageTitle DynamicPageHeader FlexibleColumnLayout Card ShellBar Avatar GridList'),
+};
 
 /* ───────── UI5 XML / HTML ───────── */
 type Tag = [name: string, body: string];
@@ -227,7 +262,7 @@ const CSS_SNIPS = snips([
   ['flex center', 'display: flex;\njustify-content: center;\nalign-items: center;'],
 ]);
 
-const KIND_ORDER: Record<Kind, number> = { snip: 0, tag: 0, kw: 1, prop: 1, attr: 1, val: 1, fn: 1, word: 2 };
+const KIND_ORDER: Record<Kind, number> = { tpl: 0, snip: 0, tag: 0, kw: 1, prop: 1, attr: 1, val: 1, fn: 1, cls: 1, mod: 1, word: 2 };
 
 /** 첫 글자가 같고, 친 글자가 순서대로 다 들어 있으면 맞는 걸로 봐요 (VS Code처럼 띄엄띄엄 쳐도 찾기). */
 export function fuzzy(label: string, prefix: string): number[] | null {
@@ -246,7 +281,7 @@ function rank(items: Item[], prefix: string): Item[] {
   return items
     .map((it) => {
       const l = it.label.toLowerCase();
-      if (p && l === p && it.kind !== 'snip' && it.kind !== 'tag') return null; // 이미 다 친 낱말은 보여 줄 필요가 없어요
+      if (p && l === p && it.kind !== 'snip' && it.kind !== 'tag' && it.kind !== 'tpl') return null; // 이미 다 친 낱말은 보여 줄 필요가 없어요
       if (l.startsWith(p)) return { it, s: 0 };
       return fuzzy(l, p) ? { it, s: 1 } : null;
     })
@@ -254,7 +289,7 @@ function rank(items: Item[], prefix: string): Item[] {
     .sort((a, b) => a.s - b.s || KIND_ORDER[a.it.kind] - KIND_ORDER[b.it.kind] || a.it.label.length - b.it.label.length || a.it.label.localeCompare(b.it.label))
     .map((x) => x.it)
     .filter((it) => { const k = it.label.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
-    .slice(0, 40);
+    .slice(0, 100);
 }
 
 /** 코드에 이미 나온 이름 (변수, 메서드 등) */
@@ -301,14 +336,23 @@ const VOID = new Set(['img', 'input', 'br', 'meta', 'link', 'hr', 'source', 'are
  * 커서 자리에서 보여 줄 자동완성 목록. 보여 줄 게 없으면 null.
  * force는 Ctrl+Space처럼 직접 열 때예요 (아무것도 안 쳤어도 목록을 보여 줘요).
  */
-export function suggest(text: string, pos: number, lang: string, force = false): Suggestion | null {
+export function suggest(text: string, pos: number, lang: string, force = false, file = ''): Suggestion | null {
   const before = text.slice(0, pos);
   const line = before.slice(before.lastIndexOf('\n') + 1);
   if (/[\w$-]/.test(text[pos] ?? '') && !force) return null; // 낱말 가운데에서는 띄우지 않아요
   if (inCommentOrString(line, lang)) return null;
+  // 파일 맨 앞이면 프로젝트를 만들 때 생기는 기본 코드도 같이 보여 줘요.
+  const atStart = !text.slice(0, pos - (/<?!?[\w$@:-]*$/.exec(line)?.[0].length ?? 0)).trim() && !text.slice(pos).trim();
+  const tpls = (dropLt = false): Item[] => (atStart ? templatesFor(lang) : []).map((t) => {
+    const body = fillTemplate(t, file).body;
+    if (!dropLt) return { label: t.label, insert: body, kind: 'tpl' as const, detail: t.from };
+    // <mvc 처럼 태그부터 쳤을 때는 태그 이름으로 찾을 수 있게 해요.
+    const tag = /^<([!\w:.-]+)/.exec(body)?.[1] ?? '';
+    return { label: `${tag} · ${t.label}`, insert: body.startsWith('<') ? body.slice(1) : body, kind: 'tpl' as const, detail: t.from };
+  });
   const out = (prefix: string, items: Item[], allowEmpty = false): Suggestion | null => {
     if (!prefix && !force && !allowEmpty) return null;
-    const ranked = rank(items, prefix);
+    const ranked = rank([...tpls(), ...items], prefix);
     return ranked.length ? { from: pos - prefix.length, prefix, items: ranked } : null;
   };
 
@@ -319,8 +363,12 @@ export function suggest(text: string, pos: number, lang: string, force = false):
       const open = openTags(before.slice(0, pos - m[0].length));
       return out(m[1], open.map((t, i) => ({ label: t, insert: `${t}>`, kind: 'tag' as const, detail: i === 0 ? '닫는 태그' : undefined })), true);
     }
-    m = /<([\w:.-]*)$/.exec(line);
-    if (m) return out(m[1], ui5 ? UI5_TAGS : HTML_TAGS, true);
+    m = /<(!?[\w:.-]*)$/.exec(line);
+    if (m) {
+      const r = rank([...tpls(true), ...(ui5 ? UI5_TAGS : HTML_TAGS)], m[1]);
+      return r.length ? { from: pos - m[1].length, prefix: m[1], items: r } : null;
+    }
+    if (atStart) { const w = /[\w.]*$/.exec(line)![0]; return out(w, []); }
     const lt = before.lastIndexOf('<'), gt = before.lastIndexOf('>');
     if (lt > gt) {
       const tagText = before.slice(lt);
@@ -369,13 +417,16 @@ export function suggest(text: string, pos: number, lang: string, force = false):
   }
 
   // JavaScript (UI5) 그리고 예전 글의 비슷한 언어들
+  const chain = /(?:^|[^\w$.])((?:[A-Za-z_$][\w$]*\.)+)([\w$]*)$/.exec(line);
+  const ns = chain && UI5_NS[chain[1].slice(0, -1)];
+  if (chain && ns) return out(chain[2], ns, true);
   const dot = /([\w$)\]])\.([\w$]*)$/.exec(line);
   if (dot) {
     const used = docWords(text, /(?<=\.)[A-Za-z_$][\w$]*/g, dot[2], new Set()).map((it) => ({ ...it, kind: 'fn' as const, detail: undefined }));
     return out(dot[2], [...JS_MEMBERS, ...used], true);
   }
   const m = /[A-Za-z_$][\w$]*$/.exec(line)?.[0] ?? '';
-  return out(m, [...JS_SNIPS, ...plain('kw', kws), ...docWords(text, /[A-Za-z_$][\w$]*/g, m, kwSet)]);
+  return out(m, [...JS_SNIPS, ...plain('mod', ['sap'], 'UI5 네임스페이스'), ...plain('kw', kws), ...docWords(text, /[A-Za-z_$][\w$]*/g, m, kwSet)]);
 }
 
 /** ABAP·SQL은 친 글자가 대문자면 키워드도 대문자로 넣어요. */

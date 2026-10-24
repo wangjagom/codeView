@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { caseFor, expand, newline, openTags, shouldPair, suggest } from './complete';
+import { TEMPLATES, fillTemplate } from './templates';
 
 const at = (s: string) => ({ text: s.replace('|', ''), pos: s.indexOf('|') });
 const labels = (s: string, lang: string, force = false) => {
@@ -69,5 +70,33 @@ describe('editing helpers', () => {
   });
   it('열린 태그', () => {
     expect(openTags('<mvc:View><Page><content><Text text="a"/>')).toEqual(['content', 'Page', 'mvc:View']);
+  });
+});
+
+describe('templates', () => {
+  it('파일 맨 앞에서는 프로젝트 기본 코드가 나와요', () => {
+    expect(labels('Comp|', 'JavaScript')).toContain('Component.js');
+    expect(labels('function a() {}\nComp|', 'JavaScript')).not.toContain('Component.js');
+    expect(labels('CLA|', 'ABAP')).toContain('CLASS (새 클래스)');
+    expect(labels('<mvc|', 'XML')).toContain('mvc:View · View1.view.xml');
+    expect(labels('<!|', 'HTML')[0]).toMatch(/^!DOCTYPE · /);
+  });
+  it('파일 이름으로 이름을 채워요', () => {
+    const { text, pos } = at('Vie|');
+    const it = suggest(text, pos, 'XML', false, 'Main.view.xml')!.items.find((i) => i.label === 'View1.view.xml')!;
+    expect(it.insert).toContain('controllerName="zproject1.controller.Main"');
+    const t = TEMPLATES.find((x) => x.id === 'abap-classrun')!;
+    expect(fillTemplate(t, 'zcl_test.clas.abap')).toMatchObject({ file: 'zcl_test.clas.abap' });
+    expect(fillTemplate(t, '').body).toContain('CLASS zcl_hello DEFINITION');
+  });
+  it('manifest.json은 올바른 JSON이에요', () => {
+    const t = TEMPLATES.find((x) => x.id === 'ui5-manifest')!;
+    expect(() => JSON.parse(expand(fillTemplate(t).body, '').text)).not.toThrow();
+  });
+  it('sap. 뒤에는 네임스페이스와 컨트롤', () => {
+    expect(labels('new sap.|', 'JavaScript')).toEqual(expect.arrayContaining(['m', 'ui']));
+    expect(labels('new sap.m.Bu|', 'JavaScript')[0]).toBe('Button');
+    expect(labels('sap.m.MessageToast.|', 'JavaScript')).toEqual(['show']);
+    expect(labels('sap.ui.getCore().|', 'JavaScript')).toContain('attachInit');
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Problem } from '../lib/checks';
 import { PAIRS, caseFor, expand, fuzzy, newline, shouldPair, suggest, type Item, type Kind, type Suggestion } from '../lib/complete';
 import { highlight, highlightWithMark } from '../lib/highlight';
+import { fillTemplate, templatesFor, type Template } from '../lib/templates';
 import { Icon } from './Icon';
 
 interface Props {
@@ -10,21 +11,25 @@ interface Props {
   lang: string;
   problems: Problem[];
   placeholder?: string;
+  /** 파일 이름 (기본 코드의 클래스·뷰 이름에 써요) */
+  fileName?: string;
   onChange: (v: string) => void;
+  /** 기본 코드를 골랐을 때. 파일 이름이 비어 있으면 채워 줄 수 있게 알려 줘요. */
+  onTemplate?: (fileName: string, lang: string, code: string) => void;
   onToast?: (msg: string) => void;
 }
 
 const LINE_H = 13 * 1.7;
 const PAD_TOP = 10, PAD_LEFT = 4;
-const KIND_ICON: Record<Kind, string> = { snip: '{}', kw: 'K', tag: '<>', attr: '=', prop: '#', val: 'v', fn: 'ƒ', word: 'ab' };
-const KIND_NAME: Record<Kind, string> = { snip: '스니펫', kw: '키워드', tag: '태그', attr: '속성', prop: '속성', val: '값', fn: '메서드', word: '' };
+const KIND_ICON: Record<Kind, string> = { tpl: '▤', snip: '{}', kw: 'K', tag: '<>', attr: '=', prop: '#', val: 'v', fn: 'ƒ', cls: 'C', mod: 'N', word: 'ab' };
+const KIND_NAME: Record<Kind, string> = { tpl: '기본 코드', snip: '스니펫', kw: '키워드', tag: '태그', attr: '속성', prop: '속성', val: '값', fn: '메서드', cls: '클래스', mod: '네임스페이스', word: '' };
 
 /**
  * VS Code(Dark Modern)처럼 보이는 코드 입력칸.
  * 투명한 textarea 뒤에 같은 글자를 색칠한 <pre>를 깔아서, 입력은 그대로 되고 색만 보여요.
  * 언어별 자동완성, 괄호 닫기, 들여쓰기도 VS Code처럼 해 줘요.
  */
-export function CodeEditor({ id, value, lang, problems, placeholder, onChange, onToast }: Props) {
+export function CodeEditor({ id, value, lang, problems, placeholder, fileName = '', onChange, onTemplate, onToast }: Props) {
   const preRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -66,7 +71,7 @@ export function CodeEditor({ id, value, lang, problems, placeholder, onChange, o
   };
 
   const open = (v: string, pos: number, force = false) => {
-    const r = suggest(v, pos, lang, force);
+    const r = suggest(v, pos, lang, force, fileName);
     setSg(r ? { ...r, i: 0 } : null);
   };
 
@@ -79,6 +84,15 @@ export function CodeEditor({ id, value, lang, problems, placeholder, onChange, o
     setSg(null);
     edit(sg.from, pos, x.text, x.start, x.end);
   };
+
+  const pickTemplate = (tp: Template) => {
+    const f = fillTemplate(tp, fileName);
+    const x = expand(f.body, '');
+    setSg(null);
+    edit(0, taRef.current?.value.length ?? 0, x.text, x.start, x.end);
+    onTemplate?.(f.file, tp.lang, x.text);
+  };
+  const tpls = templatesFor(lang);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing) return;
@@ -184,6 +198,12 @@ export function CodeEditor({ id, value, lang, problems, placeholder, onChange, o
         }}><Icon name="paste" />붙여넣기</button>
         {value && <button type="button" className="ed-act" onClick={() => { onChange(''); setSg(null); document.getElementById(id)?.focus(); }}><Icon name="trash" />지우기</button>}
       </div>
+      {!value && tpls.length > 0 && (
+        <div className="ed-tpl">
+          <span className="ed-tpl-h">기본 코드로 시작</span>
+          {tpls.map((tp) => <button key={tp.id} type="button" className="ed-chip" title={`${tp.from}에서 만들어 주는 코드`} onClick={() => pickTemplate(tp)}>{tp.label}</button>)}
+        </div>
+      )}
       <div className="ed-body" style={{ ['--ed-h' as string]: `${Math.min(560, Math.max(200, lines.length * 22.1 + 48))}px` }}>
         <div className="ed-gutter" ref={gutterRef} aria-hidden="true">
           {lines.map((_, i) => { const p = bad.get(i + 1); return <div key={i} className={p ? `g-${p.sev}` : ''}>{i + 1}</div>; })}
