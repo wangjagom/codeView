@@ -91,7 +91,8 @@ export interface Comment {
 export interface Thread {
   id: string;
   post_id: string;
-  line: number;
+  /** 줄 리뷰는 줄 번호, 글 전체에 다는 댓글은 null */
+  line: number | null;
   resolved: boolean;
   created_by: string;
   created_at: string;

@@ -226,7 +226,8 @@ export async function deletePost(postId: string): Promise<void> {
 }
 
 /** 그 줄에 스레드가 없으면 만들고 첫 댓글을 달아요. */
-export async function addLineComment(postId: string, line: number, body: string, suggestion: Suggestion | null, threadId?: string, file = 0): Promise<void> {
+/** 줄 리뷰 (line이 null이면 글 전체에 다는 댓글) */
+export async function addLineComment(postId: string, line: number | null, body: string, suggestion: Suggestion | null, threadId?: string, file = 0): Promise<void> {
   let tid = threadId;
   if (!tid) {
     const t = must(await supabase.from('threads').insert(file ? { post_id: postId, line, file } : { post_id: postId, line }).select('id').single()) as { id: string };
@@ -260,6 +261,8 @@ export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message
     : e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message)
     : String(e);
+  if (/"line".*not-null|null value in column "line"/i.test(msg)) return '전체 댓글을 쓰려면 Supabase에서 새 SQL(20261025010000_general_comments.sql)을 먼저 실행해야 해요.';
+  if (/suggestion needs a line/.test(msg)) return '수정 제안은 줄 리뷰에만 달 수 있어요.';
   if (isMissingPrefs(e)) return '이메일 알림은 아직 준비 중이에요. Supabase에서 새 SQL(20261025000000_notification_prefs_fix.sql)을 실행하면 쓸 수 있어요.';
   if (/code changed/.test(msg)) return '그 사이 코드가 바뀌어서 이 제안은 적용할 수 없어요.';
   if (/only the author/.test(msg)) return '수정 제안은 코드를 올린 사람만 적용할 수 있어요.';

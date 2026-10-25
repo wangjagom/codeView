@@ -58,7 +58,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
   const [picked, setPicked] = useState<string[]>(edit?.post.reviewer_ids ?? []);
   const [note, setNote] = useState('');
   /** 파일마다 달린 리뷰 수 (고치기에서 파일을 뺄 때 알려 줘요) */
-  const reviewsIn = (f: DraftFile) => (edit && f.orig !== undefined ? edit.threads.filter((t) => (t.file ?? 0) === f.orig).reduce((n, t) => n + t.comments.length, 0) : 0);
+  const reviewsIn = (f: DraftFile) => (edit && f.orig !== undefined ? edit.threads.filter((t) => t.line !== null && (t.file ?? 0) === f.orig).reduce((n, t) => n + t.comments.length, 0) : 0);
   const [busy, setBusy] = useState(false);
   const [newTask, setNewTask] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
@@ -170,11 +170,12 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
     if (!Object.keys(meta).length && !codeChanged) { toast('바뀐 내용이 없어요'); return; }
     if (Object.keys(meta).length) await updatePostMeta(post.id, meta);
     if (codeChanged) {
-      const moved = threads.map((t) => {
+      // 줄 리뷰만 새 자리로 옮겨요. 글 전체 댓글(line 없음)은 그대로 남아요.
+      const moved = threads.filter((t) => t.line !== null).map((t) => {
         const from = t.file ?? 0;
         const to = files.findIndex((f) => f.orig === from);
         if (to < 0) return { id: t.id, file: null, line: 1 };
-        const line = lineMapper(old[from].code, ready[to].code)(t.line);
+        const line = lineMapper(old[from].code, ready[to].code)(t.line ?? 1);
         return { id: t.id, file: to, line: Math.min(line, ready[to].code.split('\n').length) };
       });
       await updatePostCode(post.id, ready, moved, note.trim() || '직접 수정');

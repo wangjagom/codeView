@@ -16,6 +16,7 @@ import { RichText } from '../components/RichText';
 import { MoreMenu } from '../components/MoreMenu';
 import { copyText, readPref, writePref } from '../lib/util';
 import { CodeFull } from '../components/CodeFull';
+import { GeneralComments } from '../components/GeneralComments';
 import { discordText, plainText, type ShareInput } from '../lib/share';
 import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
@@ -63,9 +64,12 @@ export function PostDetail({ id }: { id: string }) {
   const e = problems.filter((p) => p.sev === 'e').length, w = problems.length - e;
   const reviewCount = data.threads.reduce((n, t) => n + t.comments.length, 0);
   const readOnly = viewVersion !== null && viewVersion !== post.version;
+  // 줄 리뷰는 코드 안에, 글 전체 댓글(line 없음)은 코드 아래 따로 보여요.
+  const lineThreads = data.threads.filter((t) => t.line !== null);
+  const generalThreads = data.threads.filter((t) => t.line === null);
 
   const codeView = (fontPx?: number) => (
-    <CodeView key={`${fi}-${viewVersion ?? 'now'}`} code={shownCode} lang={curFile.lang} problems={problems} threads={readOnly ? [] : data.threads.filter((t) => (t.file ?? 0) === fi)} person={person}
+    <CodeView key={`${fi}-${viewVersion ?? 'now'}`} code={shownCode} lang={curFile.lang} problems={problems} threads={readOnly ? [] : lineThreads.filter((t) => (t.file ?? 0) === fi)} person={person}
       isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} meId={me.id} onEdit={onEdit} onDelete={onDelete}
       wrap={wrap} fontPx={fontPx} />
   );
@@ -80,6 +84,8 @@ export function PostDetail({ id }: { id: string }) {
   const saved = bookmarks.has(post.id);
   const onComment = (line: number, body: string, s: Suggestion | null, threadId?: string) =>
     run(() => addLineComment(post.id, line, body, s, threadId, fi), share ? '의견을 남겼어요' : '리뷰를 남겼어요');
+  const onGeneral = (body: string, threadId?: string) =>
+    run(() => addLineComment(post.id, null, body, null, threadId), share ? '댓글을 남겼어요' : '전체 리뷰를 남겼어요');
   const onResolve = (tid: string, r: boolean) => { run(() => setResolved(tid, r), r ? '대화를 해결로 표시했어요' : '대화를 다시 열었어요'); };
   const onApply = (cid: string) => { run(() => applySuggestion(cid), '제안을 적용했어요'); };
   const onEdit = (cid: string, body: string) => run(() => updateComment(cid, body), '리뷰를 고쳤어요');
@@ -147,7 +153,7 @@ export function PostDetail({ id }: { id: string }) {
               {shownFiles.map((f, i) => {
                 const ps = allProblems[i] ?? [];
                 const pe = ps.filter((p) => p.sev === 'e').length;
-                const n = readOnly ? 0 : data.threads.filter((t) => (t.file ?? 0) === i).reduce((k, t) => k + t.comments.length, 0);
+                const n = readOnly ? 0 : lineThreads.filter((t) => (t.file ?? 0) === i).reduce((k, t) => k + t.comments.length, 0);
                 return (
                   <span key={f.name} className={`ftab ${i === fi ? 'on' : ''}`}>
                     <button type="button" role="tab" aria-selected={i === fi} className="ftab-name" onClick={() => setFileIdx(i)}>
@@ -180,11 +186,15 @@ export function PostDetail({ id }: { id: string }) {
           </div>
           <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄을 누르고 왼쪽 <b className="hint-plus">+</b> 로 {share ? '질문·의견을' : '리뷰를'} 남겨요</>}</p>
           {big ? <div className="code-away muted small">크게 보기로 보는 중이에요</div> : codeView()}
-          {!readOnly && !data.threads.some((t) => (t.file ?? 0) === fi) && (
-            <div className="no-review">{share ? '질문·의견 없음' : isAuthor || !problems[0] ? '리뷰 없음'
-              : <>리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
+          {!readOnly && !lineThreads.some((t) => (t.file ?? 0) === fi) && (
+            <div className="no-review">{share ? '줄 질문·의견 없음' : isAuthor || !problems[0] ? '줄 리뷰 없음'
+              : <>줄 리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
           )}
         </div>
+
+        {/* 글 전체 댓글은 버전과 상관없이 늘 같은 글에 붙어 있어요 */}
+        <GeneralComments threads={generalThreads} share={share} lang={curFile.lang} code={shownCode} person={person} authorId={post.author_id}
+          meId={me.id} isAuthor={isAuthor} onAdd={(b) => onGeneral(b)} onReply={(tid, b) => onGeneral(b, tid)} onEdit={onEdit} onDelete={onDelete} />
 
         <div>
           <div className="sec-h"><h2>버전</h2><span className="muted small">{data.versions.length}개</span></div>

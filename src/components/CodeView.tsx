@@ -57,6 +57,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
   const byLine = useMemo(() => {
     const m = new Map<number, Thread[]>();
     for (const t of threads) {
+      if (t.line === null) continue; // 글 전체 댓글은 코드 아래 따로 보여요
       const ln = Math.min(Math.max(1, t.line), lines.length);
       m.set(ln, [...(m.get(ln) ?? []), t]);
     }
@@ -101,7 +102,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
                 )}
                 {ts.map((t) => (
                   <ThreadBox key={t.id} thread={t} lines={lines} lang={lang} person={person} isAuthor={isAuthor} readOnly={readOnly}
-                    onReply={(body) => onComment?.(t.line, body, null, t.id) ?? Promise.resolve(false)}
+                    onReply={(body) => onComment?.(ln, body, null, t.id) ?? Promise.resolve(false)}
                     onResolve={onResolve} onApply={onApply} meId={meId} onEdit={onEdit} onDelete={onDelete} />
                 ))}
                 {onComment && (
@@ -124,12 +125,15 @@ function suggestionState(s: Suggestion, lines: string[]): 'ok' | 'stale' {
   return 'ok';
 }
 
-function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, onResolve, onApply, meId, onEdit, onDelete }: {
+/** 한 대화(첫 댓글 + 답글). general이면 글 전체 댓글: 해결 표시가 없고, 답글 칸은 '답글'을 눌러야 열려요. */
+export function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, onResolve, onApply, meId, onEdit, onDelete, general, authorId }: {
   thread: Thread; lines: string[]; lang: string; person: (id: string) => Profile; isAuthor: boolean; readOnly?: boolean;
   onReply: (body: string) => Promise<boolean>; onResolve?: (id: string, r: boolean) => void; onApply?: (id: string) => void;
   meId?: string; onEdit?: (id: string, body: string) => Promise<boolean>; onDelete?: (id: string) => Promise<boolean>;
+  general?: boolean; authorId?: string;
 }) {
   const [reply, setReply] = useState('');
+  const [replyOpen, setReplyOpen] = useState(!general);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -151,7 +155,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
             <Avatar person={who} />
             <div style={{ minWidth: 0 }}>
               <div className="cm-h">
-                <b>{who.name}</b><time dateTime={c.created_at}>{timeAgo(c.created_at)}</time>
+                <b>{who.name}</b>{authorId && c.author_id === authorId && <span className="by-author">글쓴이</span>}<time dateTime={c.created_at}>{timeAgo(c.created_at)}</time>
                 {c.edited_at && <span className="edited" title={new Date(c.edited_at).toLocaleString()}>수정됨</span>}
                 {mine && editing !== c.id && confirmDel !== c.id && (
                   <span className="cm-acts">
@@ -162,7 +166,7 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
               </div>
               <Expand open={confirmDel === c.id}>
                 <div className="cm-del">
-                  <span>{thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요.' : '이 리뷰를 지울까요?'}</span>
+                  <span>{general ? (thread.comments.length === 1 ? '이 댓글을 지울까요?' : '이 댓글을 지울까요? 답글은 남아요.') : thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요.' : '이 리뷰를 지울까요?'}</span>
                   <button type="button" className="btn sm" onClick={() => setConfirmDel(null)}>취소</button>
                   <button type="button" className="btn sm danger-btn" disabled={busy} onClick={async () => { setBusy(true); const ok = await onDelete?.(c.id); setBusy(false); if (ok) setConfirmDel(null); }}>삭제</button>
                 </div>
@@ -203,20 +207,23 @@ function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onReply, o
           </div>
         );
       })}
-      {readOnly ? null : thread.resolved ? (
+      {readOnly ? null : general && !replyOpen ? (
+        <div className="reply-open"><button type="button" className="txt-btn" onClick={() => { setReplyOpen(true); requestAnimationFrame(() => document.getElementById(`reply-${thread.id}`)?.focus()); }}>답글 달기</button></div>
+      ) : !general && thread.resolved ? (
         <div className="reply"><span className="applied">✓ 해결된 대화</span><span className="sp" /><button type="button" className="act-btn" onClick={() => onResolve?.(thread.id, false)}>다시 열기</button></div>
       ) : (
         <form className="reply" onSubmit={async (e) => {
           e.preventDefault();
           const v = reply.trim(); if (!v || busy) return;
           setBusy(true); const ok = await onReply(v); setBusy(false);
-          if (ok) setReply('');
+          if (ok) { setReply(''); if (general) setReplyOpen(false); }
         }}>
           <AssistTextarea lang={lang} context={lines.join('\n')} id={`reply-${thread.id}`} rows={Math.min(8, Math.max(1, reply.split('\n').length))} value={reply} onChange={(e) => setReply(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
             placeholder="답글 달기" aria-label="답글" maxLength={5000} />
           <button className="btn primary sm with-ic" disabled={busy || !reply.trim()} aria-label="답글 보내기"><Icon name="send" />보내기</button>
-          <button type="button" className="act-btn ok" onClick={() => onResolve?.(thread.id, true)}><Icon name="check" />해결</button>
+          {general ? <button type="button" className="act-btn" onClick={() => { setReplyOpen(false); setReply(''); }}>취소</button>
+            : <button type="button" className="act-btn ok" onClick={() => onResolve?.(thread.id, true)}><Icon name="check" />해결</button>}
           <Expand open={/`/.test(reply)} className="full"><div className="preview cm-text"><span className="preview-h">미리보기</span><RichText text={reply} lang={lang} /></div></Expand>
         </form>
       )}

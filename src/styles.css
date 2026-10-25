@@ -723,3 +723,24 @@ button.num { border: 0; background: none; font: inherit; line-height: inherit; c
 .cf-foot button:disabled { opacity: .35; cursor: default; }
 .cf-foot .ic { width: 16px; height: 16px; }
 @media (min-width: 900px) { .cf-body .rows-in { max-width: 1100px; margin: 0 auto; } .rows.nowrap .rows-in { max-width: none; } }
+
+/* 글 전체 댓글 (리뷰 요청: 전체 리뷰 · 코드 공유: 댓글) */
+.by-author { margin-left: 4px; padding: 1px 5px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; }
+.gen-card { background: var(--surface); border-radius: var(--r); overflow: hidden; }
+.gen-card .thread { border-radius: 0; box-shadow: none; background: none; }
+.gen-card .thread + .thread { border-top: 1px solid var(--line); }
+.gen-card .cm { padding: 14px 16px 6px; }
+.gen-card .cm + .cm { border-top: 0; margin-left: 38px; padding-top: 4px; grid-template-columns: 24px minmax(0, 1fr); }
+.gen-card .cm + .cm .ava { width: 24px; height: 24px; font-size: 11px; }
+.gen-card .reply { margin: 4px 12px 12px; border-radius: 12px; }
+.reply-open { padding: 0 16px 10px 54px; }
+.reply-open .txt-btn { font-size: 12.5px; font-weight: 600; padding: 2px 0; }
+.gen-empty { display: grid; gap: 4px; padding: 22px 16px 18px; text-align: center; }
+.gen-empty b { font-size: 15px; font-weight: 600; }
+.gen-empty span { font-size: 13px; color: var(--faint); }
+.gen-new { display: grid; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.gen-card > .gen-new:first-child { border-top: 0; }
+.gen-new textarea { width: 100%; border: 0; border-radius: 12px; background: var(--fill); padding: 10px 12px; font-size: 14.5px; line-height: 1.5; resize: vertical; min-height: 64px; }
+.gen-new textarea:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.gen-new .row-a { display: flex; align-items: center; gap: 8px; }
+.gen-new .hint { margin-right: auto; font-size: 12px; color: var(--faint); }
