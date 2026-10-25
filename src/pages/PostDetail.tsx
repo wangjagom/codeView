@@ -16,6 +16,7 @@ import { RichText } from '../components/RichText';
 import { MoreMenu } from '../components/MoreMenu';
 import { copyText, readPref, writePref } from '../lib/util';
 import { CodeFull } from '../components/CodeFull';
+import { discordText, plainText, type ShareInput } from '../lib/share';
 import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
 
@@ -86,11 +87,13 @@ export function PostDetail({ id }: { id: string }) {
   const onStatus = (s: Status) => { run(() => setStatus(post.id, s), `'${STATUS_LABEL[s]}'(으)로 바꿨어요`); };
 
   const postLink = () => location.href.split('#')[0] + href({ name: 'post', id: post.id });
-  const chatText = () => {
-    const summary = share ? (post.ask ? `${post.ask}\n` : '') + `질문·의견 ${reviewCount}` : `${e || w ? `오류 ${e} · 경고 ${w} · ` : ''}리뷰 ${reviewCount}`;
-    const others = shownFiles.length > 1 ? `\n다른 파일: ${shownFiles.filter((_, i) => i !== fi).map((f) => f.name).join(', ')}` : '';
-    return `**${share ? '[공유] ' : ''}${post.title}** (${curFile.name} · v${post.version})\n\`\`\`${fenceOf(curFile.lang)}\n${shownCode}\n\`\`\`\n${summary}${others}\n${postLink()}`;
-  };
+  const shareInput = (): ShareInput => ({
+    title: post.title, share, status: share ? undefined : STATUS_LABEL[post.status], author: author.name,
+    file: curFile.name, lang: langLabel(curFile.lang), fence: fenceOf(curFile.lang), version: post.version, code: shownCode, ask: post.ask,
+    errors: e, warnings: w, reviews: reviewCount, otherFiles: shownFiles.filter((_, i) => i !== fi).map((f) => f.name), link: postLink(),
+  });
+  const copyChat = async (text: string, where: string) =>
+    toast((await copyText(text)) ? `${where}에 붙여 넣으면 돼요` : '복사가 막혀 있어요. 코드를 길게 눌러 직접 복사해 주세요');
   const fileName = safeName(curFile.name, 'code.txt');
   const saveFile = () => download(fileName, shownCode, 'text/plain;charset=utf-8');
   const saveZip = () => {
@@ -169,7 +172,8 @@ export function PostDetail({ id }: { id: string }) {
             <MoreMenu items={[
               { label: '크게 보기', icon: 'expand', hint: '코드만 화면 가득', onSelect: () => setBig(true) },
               { label: wrap ? '줄바꿈 끄기' : '줄바꿈 켜기', icon: 'wrap', hint: wrap ? '긴 줄을 옆으로 밀어서 봐요' : '긴 줄을 화면 폭에 맞춰 꺾어요', onSelect: toggleWrap },
-              { label: '채팅용 복사', icon: 'chat', hint: '디스코드·카톡에 붙이기 좋게', onSelect: async () => toast((await copyText(chatText())) ? '채팅용으로 복사했어요' : '복사가 막혀 있어요. 코드를 길게 눌러 직접 복사해 주세요') },
+              { label: '디스코드용 복사', icon: 'chat', hint: '코드 블록 + 링크 (앞 15줄)', onSelect: () => copyChat(discordText(shareInput()), '디스코드') },
+              { label: '카톡·메신저용 복사', icon: 'chat', hint: '글자만 · 짧게 (앞 8줄)', onSelect: () => copyChat(plainText(shareInput()), '카톡·메신저') },
               { label: '파일 저장', icon: 'download', hint: fileName, onSelect: saveFile },
               { label: shownFiles.length > 1 ? `zip 저장 (${shownFiles.length}개)` : 'zip 저장', icon: 'zip', hint: '모든 파일 + README.md', onSelect: saveZip },
             ]} />

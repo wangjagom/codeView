@@ -81,7 +81,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
               <div className="ln">
                 {on && (
                   <button type="button" className="ln-add" aria-label={`${ln}번째 줄에 리뷰 남기기`} aria-expanded={composer === ln}
-                    onClick={() => setComposer(composer === ln ? null : ln)}>+</button>
+                    onClick={() => setComposer(composer === ln ? null : ln)} />
                 )}
                 {readOnly ? <span className="num">{ln}</span>
                   : <button type="button" className="num" aria-pressed={on} aria-label={`${ln}번째 줄 고르기${count ? ` · 리뷰 ${count}개` : ''}`} onClick={() => pick(ln)}>{ln}</button>}

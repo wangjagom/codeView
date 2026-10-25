@@ -533,8 +533,9 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .row.w { background: var(--orange-soft); }
 /* 줄 번호 칸: 고른 줄에만 + 가 번호 왼쪽에 떠요 */
 .ln { display: flex; align-items: flex-start; justify-content: flex-end; gap: 4px; padding-right: 8px; min-width: 0; }
-.ln-add { flex: none; width: 18px; height: 18px; margin-top: calc((1.8em - 18px) / 2); border: 0; border-radius: 5px; padding: 0; background: var(--accent); color: var(--accent-fg); font: 700 14px/18px var(--font); cursor: pointer; animation: cv-pop-in .14s ease-out both; }
-.ln-add[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(0, 120, 212, .35); }
+.ln-add { flex: none; display: grid; place-items: center; width: 20px; height: 1.8em; border: 0; padding: 0; background: none; color: var(--accent-fg); cursor: pointer; animation: cv-pop-in .14s ease-out both; }
+.ln-add::before { content: '+'; width: 18px; height: 18px; border-radius: 5px; background: var(--accent); font: 700 14px/18px var(--font); text-align: center; }
+.ln-add[aria-expanded="true"]::before { box-shadow: 0 0 0 3px rgba(0, 120, 212, .35); }
 .num { color: var(--code-num); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
 button.num { border: 0; background: none; font: inherit; line-height: inherit; color: inherit; cursor: pointer; padding: 0; }
 .ln .num { color: var(--code-num); }
@@ -594,7 +595,7 @@ button.num { border: 0; background: none; font: inherit; line-height: inherit; c
 .rows.dm button.num:hover { color: #cccccc; }
 .rows.dm .row.e .num { color: var(--ed-err); } .rows.dm .row.w .num { color: var(--ed-warn); }
 .rows.dm .row.has-cm .num { color: #4daafc; } .rows.dm .row.sel .num { color: #ffffff; }
-.rows.dm .ln-add { background: #0078d4; color: #ffffff; }
+.rows.dm .ln-add::before { background: #0078d4; color: #ffffff; }
 .rows.dm .inl { color: var(--fg); }
 .rows.dm ::selection { background: rgba(38, 79, 120, .9); }
 .diff.dm { background: var(--ed-bg); color: var(--ed-fg); }
