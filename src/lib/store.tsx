@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CommentLite, Like, Member, Post, Profile, Role, Team } from './types';
+import type { CommentLite, Like, Member, Note, Post, Profile, Role, Team } from './types';
 
 export type MyTeam = Team & { role: Role };
 
@@ -20,6 +20,13 @@ export interface Store {
   likes: Like[];
   /** 내가 🔖 저장한 글 id */
   bookmarks: Set<string>;
+  /** 내 앱 안 알림 (모든 팀). 불러오는 중이면 undefined, 새 SQL 전이면 null */
+  notes: Note[] | null | undefined;
+  /** 지금 팀의 안 읽은 알림 수 */
+  unread: number;
+  /** 팀별 안 읽은 알림 수 */
+  unreadByTeam: Map<string, number>;
+  markRead: (ids: string[]) => void;
   toggleLike: (postId: string) => void;
   toggleBookmark: (postId: string) => void;
   /** 서버에서 지금 팀의 목록을 다시 불러와요. */

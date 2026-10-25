@@ -2,12 +2,14 @@ import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverLayer } from './components/Hover';
 import { ALL, Layout, type Filter } from './components/Layout';
-import { createProfile, friendlyError, getMyProfile, listLikes, listMyBookmarks, setBookmark, setLike, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
+import { createProfile, friendlyError, getMyProfile, listLikes, listNotes, markNotesRead, listMyBookmarks, setBookmark, setLike, updateProfile, listCommentsLite, listMembers, listMyTeams, listPosts } from './lib/api';
 import { PALETTE, isConfigured } from './lib/config';
 import { navigate, useRoute } from './lib/router';
 import { StoreContext, lastTeam, makePerson, pendingCode, pendingProfile, type MyTeam, type Store } from './lib/store';
 import { supabase } from './lib/supabase';
-import { canManage, type CommentLite, type Like, type Member, type Post, type Profile } from './lib/types';
+import { canManage, type CommentLite, type Like, type Member, type Note, type Post, type Profile } from './lib/types';
+import { NoteBanner } from './components/NoteBanner';
+import { Notifications } from './pages/Notifications';
 import { AuthCard, Login, Onboarding } from './pages/Auth';
 import { Feed } from './pages/Feed';
 import { Me } from './pages/Me';
@@ -32,6 +34,8 @@ export default function App() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<CommentLite[]>([]);
   const [likes, setLikes] = useState<Like[]>([]);
+  const [notes, setNotes] = useState<Note[] | null | undefined>(undefined);
+  const [banner, setBanner] = useState<Note | null>(null);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const [toastMsg, setToastMsg] = useState('');
@@ -141,6 +145,33 @@ export default function App() {
     return () => { window.clearTimeout(timer); supabase.removeChannel(ch); };
   }, [phase, teamId, refresh]);
 
+  // 앱 안 알림: 처음에 불러오고, 새 알림은 실시간으로 받아 위에 띄워요.
+  const uid = session?.user.id;
+  useEffect(() => {
+    if (phase !== 'ready' || !uid) return;
+    let alive = true;
+    listNotes().then((n) => { if (alive) setNotes(n); }).catch(() => {});
+    const ch = supabase.channel(`notes-${uid}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` }, (payload) => {
+        const n = payload.new as Note;
+        setNotes((ns) => (ns ? [n, ...ns.filter((x) => x.id !== n.id)] : [n]));
+        setBanner(n);
+      })
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+  }, [phase, uid]);
+  const markRead = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    const at = new Date().toISOString();
+    setNotes((ns) => ns && ns.map((n) => (ids.includes(n.id) && !n.read_at ? { ...n, read_at: at } : n)));
+    markNotesRead(ids).catch(() => {});
+  }, []);
+  const unreadByTeam = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const n of notes ?? []) if (!n.read_at) m.set(n.team_id, (m.get(n.team_id) ?? 0) + 1);
+    return m;
+  }, [notes]);
+
   // 👍·🔖는 누르자마자 화면에 반영하고, 실패하면 되돌려요.
   const toggleLike = useCallback((postId: string) => {
     if (!session) return;
@@ -167,8 +198,8 @@ export default function App() {
     const team = teams.find((t) => t.id === teamId);
     if (phase !== 'ready' || !session || !me || !team) return null;
     const person = makePerson(profiles);
-    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: canManage(team.role), profiles, person, posts, comments, likes, bookmarks, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut };
-  }, [phase, session, me, teams, teamId, profiles, posts, comments, likes, bookmarks, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
+    return { me: { ...me, ...(profiles.find((p) => p.id === me.id) ?? {}) }, team, teams, isOwner: canManage(team.role), profiles, person, posts, comments, likes, bookmarks, notes, unread: unreadByTeam.get(team.id) ?? 0, unreadByTeam, markRead, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut };
+  }, [phase, session, me, teams, teamId, profiles, posts, comments, likes, bookmarks, notes, unreadByTeam, markRead, toggleLike, toggleBookmark, refresh, reloadTeams, switchTeam, tick, toast, signOut]);
 
   const toastEl = <><div className={`toast ${toastMsg ? 'on' : ''}`} role="status">{toastMsg}</div><HoverLayer /></>;
 
@@ -203,8 +234,10 @@ export default function App() {
           {route.name === 'me' && <Me onTeam={() => setSheet(true)} onShowAll={(view) => { setFilter({ ...ALL, view }); setTask(''); navigate({ name: 'feed' }); }} />}
           {route.name === 'team' && <TeamSettings key={store.team.id} onTeam={() => setSheet(true)} />}
           {route.name === 'teams' && <TeamsPage />}
+          {route.name === 'alerts' && <Notifications />}
         </div>
       </Layout>
+      <NoteBanner note={banner} viewingPostId={route.name === 'post' ? route.id : null} onDone={() => setBanner(null)} />
       {toastEl}
     </StoreContext.Provider>
   );

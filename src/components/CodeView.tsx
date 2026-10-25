@@ -151,7 +151,7 @@ export function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onR
         const state = s && !c.applied_at ? suggestionState(s, lines) : null;
         const mine = !readOnly && Boolean(meId) && c.author_id === meId && Boolean(onEdit);
         return (
-          <div className="cm" key={c.id}>
+          <div className="cm" key={c.id} id={`cm-${c.id}`}>
             <Avatar person={who} />
             <div style={{ minWidth: 0 }}>
               <div className="cm-h">

@@ -751,3 +751,33 @@ button.num { border: 0; background: none; font: inherit; line-height: inherit; c
 .hov-x:hover { background: #2a2d2e; color: #ffffff; }
 .hov-go { justify-self: start; border: 0; background: none; padding: 2px 0; color: #4daafc; font: 600 12.5px var(--font); cursor: pointer; }
 .hov.tap > .hov-x + .hov-b { padding-right: 34px; }
+
+/* 앱 안 알림: 종 · 목록 · 위에서 내려오는 띠 */
+.bell { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: var(--surface); color: var(--fg); flex: none; }
+.bell .ic { width: 21px; height: 21px; }
+.bell-n { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--bg); font-variant-numeric: tabular-nums; }
+body[data-page="form"] .bell { background: var(--fill); }
+.nt-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 8px; }
+.nt-group { margin-top: 16px; }
+.nt-day { margin: 0 4px 8px; font-size: 13px; font-weight: 700; color: var(--sub); }
+.item.nt { align-items: flex-start; gap: 12px; text-align: left; width: 100%; border: 0; background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
+.item.nt.unread { background: var(--accent-soft); }
+.item.nt .t { font-weight: 500; white-space: normal; line-height: 1.5; }
+.item.nt.unread .t { font-weight: 700; }
+.nt-q { font-size: 13.5px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-ava { position: relative; flex: none; }
+.nt-k { position: absolute; right: -3px; bottom: -3px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 800 10.5px/1 var(--font); font-style: normal; box-shadow: 0 0 0 2px var(--surface); }
+.item.nt.unread .nt-k { box-shadow: 0 0 0 2px var(--accent-soft); }
+.k-review { background: var(--accent); } .k-reply { background: #6b7684; } .k-request { background: var(--orange); } .k-applied { background: var(--green); } .k-like { background: var(--red); }
+.nt-dot { flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--accent); }
+.lead.center { text-align: center; }
+.set-h { padding-bottom: 4px; }
+.set-h .t { font-size: 13px; font-weight: 700; color: var(--sub); }
+.cm.flash { animation: cv-flash 2.4s ease-out; }
+@keyframes cv-flash { 0%, 40% { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+.nb { position: fixed; z-index: 42; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(560px, calc(100% - 24px)); display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 16px; background: #191f28; color: #fff; box-shadow: 0 12px 30px rgba(0, 0, 0, .25); animation: cv-drop .28s cubic-bezier(.3, .8, .25, 1) both; }
+@keyframes cv-drop { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.nb-body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.nb-body b { font-size: 14px; }
+.nb-body span { font-size: 12.5px; color: #c5ccd4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-go { flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: 700 13.5px var(--font); cursor: pointer; }

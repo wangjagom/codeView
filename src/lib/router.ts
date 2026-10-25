@@ -8,6 +8,7 @@ export type Route =
   | { name: 'me' }
   | { name: 'team' }
   | { name: 'teams' }
+  | { name: 'alerts' }
   | { name: 'join'; code: string };
 
 export function parse(hash: string): Route {
@@ -17,6 +18,7 @@ export function parse(hash: string): Route {
   if (a === 'me') return { name: 'me' };
   if (a === 'team') return { name: 'team' };
   if (a === 'teams') return { name: 'teams' };
+  if (a === 'alerts') return { name: 'alerts' };
   if (a === 'join' && b) return { name: 'join', code: decodeURIComponent(b) };
   if (a === 'post' && b) return { name: 'post', id: decodeURIComponent(b) };
   if (a === 'edit' && b) return { name: 'edit', id: decodeURIComponent(b) };
@@ -29,6 +31,7 @@ export function href(r: Route): string {
     case 'me': return '#/me';
     case 'team': return '#/team';
     case 'teams': return '#/teams';
+    case 'alerts': return '#/alerts';
     case 'join': return `#/join/${encodeURIComponent(r.code)}`;
     case 'post': return `#/post/${encodeURIComponent(r.id)}`;
     case 'edit': return `#/edit/${encodeURIComponent(r.id)}`;

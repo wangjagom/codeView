@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Comment, CommentLite, Like, Member, Post, PostFile, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
+import type { AppNotePrefs, Comment, CommentLite, Like, Member, Note, Post, PostFile, PostKind, Profile, Role, Status, Suggestion, Team, Thread, Version } from './types';
 
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -302,4 +302,33 @@ export function friendlyError(e: unknown): string {
   if (/Invalid API key|No API key/i.test(msg)) return 'Supabase 키 설정이 잘못됐어요. VITE_SUPABASE_ANON_KEY에 anon(public) 키를 넣어 주세요.';
   if (/Failed to fetch|NetworkError/.test(msg)) return '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.';
   return msg;
+}
+
+/* ---------- 앱 안 알림 ---------- */
+
+/** 내 알림 (최근 30일). 알림 표가 아직 없으면(새 SQL 전) null이에요. */
+export async function listNotes(): Promise<Note[] | null> {
+  const res = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200);
+  if (missingTable(res.error)) return null;
+  return must(res) as Note[];
+}
+
+export async function markNotesRead(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  must(await supabase.from('notifications').update({ read_at: new Date().toISOString() }).in('id', ids).is('read_at', null));
+}
+
+export const APP_NOTE_DEFAULTS: AppNotePrefs = { app_review: true, app_reply: true, app_request: true, app_applied: true, app_like: false };
+const APP_COLS = 'app_review, app_reply, app_request, app_applied, app_like';
+
+/** 종류별 앱 안 알림 설정. 새 SQL 전이면 null이에요. */
+export async function getAppNotePrefs(): Promise<AppNotePrefs | null> {
+  const res = await supabase.from('notification_prefs').select(APP_COLS);
+  if (res.error && (missingTable(res.error) || res.error.code === '42703' || /app_review/.test(res.error.message))) return null;
+  const rows = must(res) as AppNotePrefs[];
+  return rows[0] ?? APP_NOTE_DEFAULTS;
+}
+
+export async function saveAppNotePrefs(userId: string, p: AppNotePrefs): Promise<void> {
+  must(await supabase.from('notification_prefs').upsert({ user_id: userId, ...p }));
 }

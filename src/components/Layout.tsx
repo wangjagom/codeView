@@ -50,13 +50,16 @@ export function Layout({ view, sheet, onSheet, children }: {
   );
 }
 
-/** 탭 화면 위쪽: 로고 자리(비워 둠) + 서비스 이름 + 팀 바꾸기 */
+/** 탭 화면 위쪽: 로고 자리(비워 둠) + 서비스 이름 + 알림 + 팀 바꾸기 */
 export function Header({ onTeam }: { onTeam: () => void }) {
-  const { team } = useStore();
+  const { team, unread } = useStore();
   return (
     <header className="hd">
       <a className="brand" href={href({ name: 'feed' })}><span className="logo-slot" aria-hidden="true" /><span className="wordmark">codeView</span></a>
       <span className="sp" />
+      <a className="bell" href={href({ name: 'alerts' })} aria-label={unread ? `알림 ${unread}개 안 읽음` : '알림'}>
+        <Icon name="bell" />{unread > 0 && <span className="bell-n">{unread > 99 ? '99+' : unread}</span>}
+      </a>
       <button type="button" className="team-pill" onClick={onTeam} aria-haspopup="dialog">{team.name}<Icon name="down" /></button>
     </header>
   );
@@ -69,7 +72,7 @@ export function BackBar({ label = '목록', to = href({ name: 'feed' }) }: { lab
 
 /** 아래에서 올라오는 팀 고르기 */
 function TeamSheet({ onClose }: { onClose: () => void }) {
-  const { team, teams, switchTeam } = useStore();
+  const { team, teams, switchTeam, unreadByTeam } = useStore();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -82,7 +85,7 @@ function TeamSheet({ onClose }: { onClose: () => void }) {
         <div className="sheet-list">
           {teams.map((t) => (
             <button key={t.id} type="button" className="item" onClick={() => { onClose(); switchTeam(t.id); }}>
-              <span className="body"><span className="t">{t.name}</span><span className="m">{ROLE_LABEL[t.role] ?? '팀원'}</span></span>
+              <span className="body"><span className="t">{t.name}</span><span className="m">{ROLE_LABEL[t.role] ?? '팀원'}{t.id !== team.id && unreadByTeam.get(t.id) ? ` · 새 알림 ${unreadByTeam.get(t.id)}` : ''}</span></span>
               {t.id === team.id && <span className="check-mark" aria-label="지금 보는 팀">✓</span>}
             </button>
           ))}

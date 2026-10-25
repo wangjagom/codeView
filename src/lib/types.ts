@@ -114,6 +114,25 @@ export interface Version {
 /** 👍 도움됐어요 한 번 */
 export interface Like { post_id: string; user_id: string }
 
+/** 앱 안 알림 종류: 줄 리뷰 · 전체 리뷰(댓글) · 답글 · 리뷰 부탁 · 제안 적용 · 도움됐어요 */
+export type NoteKind = 'review' | 'general' | 'reply' | 'request' | 'applied' | 'like';
+export interface Note {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  team_id: string;
+  post_id: string;
+  comment_id: string | null;
+  kind: NoteKind;
+  snippet: string;
+  line: number | null;
+  file: number | null;
+  created_at: string;
+  read_at: string | null;
+}
+/** 종류별 앱 안 알림 켜기·끄기 */
+export interface AppNotePrefs { app_review: boolean; app_reply: boolean; app_request: boolean; app_applied: boolean; app_like: boolean }
+
 export interface CommentLite {
   post_id: string;
   author_id: string;

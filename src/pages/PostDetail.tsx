@@ -17,6 +17,7 @@ import { MoreMenu } from '../components/MoreMenu';
 import { copyText, readPref, writePref } from '../lib/util';
 import { CodeFull } from '../components/CodeFull';
 import { GeneralComments } from '../components/GeneralComments';
+import { takeFocus } from '../lib/focus';
 import { discordText, plainText, type ShareInput } from '../lib/share';
 import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
@@ -55,6 +56,29 @@ export function PostDetail({ id }: { id: string }) {
   const allProblems = useMemo(() => shownFiles.map((f) => checkCode(f.code, f.lang)), [shownFiles]);
   const problems = allProblems[fi] ?? [];
   useEffect(() => { setBig(false); }, [id]);
+  // 알림에서 왔으면 그 파일의 그 리뷰로 스크롤하고 잠깐 빛나게 해요.
+  useEffect(() => {
+    if (!data) return;
+    const go = () => {
+      const f = takeFocus(id);
+      if (!f) return;
+      setViewVersion(null);
+      if (f.file !== null) setFileIdx(f.file);
+      if (!f.commentId) return;
+      let tries = 0;
+      const find = () => {
+        const el = document.getElementById(`cm-${f.commentId}`);
+        if (!el) { if (tries++ < 20) window.setTimeout(find, 100); return; }
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.classList.add('flash');
+        window.setTimeout(() => el.classList.remove('flash'), 2400);
+      };
+      window.setTimeout(find, 60);
+    };
+    go();
+    window.addEventListener('cv-focus', go);
+    return () => window.removeEventListener('cv-focus', go);
+  }, [data, id]);
 
   if (error) return <section><BackBar /><div className="empty">{error}</div></section>;
   if (!data || !post) return <section><div className="empty"><Loading /></div></section>;

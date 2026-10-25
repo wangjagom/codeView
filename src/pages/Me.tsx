@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { Header } from '../components/Layout';
-import { friendlyError, getNotificationPrefs, isMissingPrefs, saveNotificationPrefs, updateProfile, type NotificationPrefs } from '../lib/api';
+import { friendlyError, getAppNotePrefs, getNotificationPrefs, isMissingPrefs, saveAppNotePrefs, saveNotificationPrefs, updateProfile, type NotificationPrefs } from '../lib/api';
 import { MIN_PASSWORD } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,39 @@ import { href } from '../lib/router';
 import { getTheme, setTheme, type Theme } from '../lib/theme';
 import { ProfileFields } from '../components/ProfileFields';
 import { Dots, Expand, Loading } from '../components/Motion';
+import type { AppNotePrefs } from '../lib/types';
+
+const APP_NOTE_ROWS: [keyof AppNotePrefs, string, string][] = [
+  ['app_review', '내 코드에 리뷰·댓글', '줄 리뷰 · 전체 리뷰 · 댓글'],
+  ['app_reply', '내 글에 답글', '내가 남긴 리뷰·댓글에 답글이 달리면'],
+  ['app_request', '리뷰 부탁', '누가 나를 리뷰어로 골랐을 때'],
+  ['app_applied', '내 제안 적용', '내 수정 제안이 코드에 들어갔을 때'],
+  ['app_like', '도움됐어요', '내 글에 도움됐어요가 눌렸을 때'],
+];
+
+/** 설정 › 앱 안 알림: 종류별로 바로 켜고 꺼요. */
+function AppNoteRows() {
+  const { me, toast } = useStore();
+  const [p, setP] = useState<AppNotePrefs | null | undefined>(undefined);
+  useEffect(() => { getAppNotePrefs().then(setP).catch(() => setP(null)); }, []);
+  const flip = (k: keyof AppNotePrefs, v: boolean) => {
+    if (!p) return;
+    const next = { ...p, [k]: v };
+    setP(next);
+    saveAppNotePrefs(me.id, next).catch((e) => { setP(p); toast(friendlyError(e)); });
+  };
+  return (
+    <>
+      <div className="item set-h"><span className="body"><span className="t">앱 안 알림</span>{p === null && <span className="m">아직 준비 중이에요 · 팀장이 Supabase SQL을 실행하면 켤 수 있어요</span>}</span></div>
+      {p !== null && APP_NOTE_ROWS.map(([k, t, m]) => (
+        <div className="item" key={k}>
+          <span className="body"><span className="t">{t}</span><span className="m">{m}</span></span>
+          {p === undefined ? <span className="muted small"><Dots /></span> : <Switch on={p[k]} label={t} onChange={(v) => flip(k, v)} />}
+        </div>
+      ))}
+    </>
+  );
+}
 
 const THEMES: [Theme, string][] = [['system', '시스템'], ['light', '라이트'], ['dark', '다크']];
 
@@ -106,6 +139,7 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
             {THEMES.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={theme === v} aria-pressed={theme === v} onClick={() => { setTheme(v); setThemeState(v); }}>{l}</button>)}
           </div>
         </div>
+        <AppNoteRows />
         {!prefs ? <div className="item"><Loading className="muted small" /></div> : (
           <>
             <div className="item">
