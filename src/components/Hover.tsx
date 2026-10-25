@@ -22,19 +22,69 @@ export function registerHoverSource(el: Element, fn: Source) {
   return () => { sources.delete(el); };
 }
 
-interface Shown { doc: Doc | null; decl: { line: number; text: string } | null; lang: string; left: number; top: number; bottom: number }
+interface Shown {
+  doc: Doc | null; decl: { line: number; text: string } | null; lang: string; left: number; top: number; bottom: number;
+  /** 탭으로 연 창: 코드 화면은 낱말 아래, 코드 입력칸은 키보드에 가리지 않게 위에 띄워요 */
+  tap?: 'below' | 'above';
+  /** 코드 화면(줄마다 id가 있는 곳)에서만 '선언한 줄로 가기'를 보여 줘요 */
+  canGo?: boolean;
+}
 
-/** VS Code처럼 코드 위에 마우스를 올리면 설명을 보여 줘요. 앱에 하나만 두면 돼요. */
+/**
+ * VS Code처럼 코드 위에 마우스를 올리면 설명을 보여 줘요. 앱에 하나만 두면 돼요.
+ * 휴대폰처럼 마우스가 없으면 낱말을 탭(클릭)했을 때 같은 창을 띄우고, 글자를 치거나 스크롤하면 닫아요.
+ */
 export function HoverLayer() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const shownRef = useRef(false);
+  const shownTapRef = useRef(false);
   const lastKeyRef = useRef('');
   shownRef.current = Boolean(shown);
+  shownTapRef.current = Boolean(shown?.tap);
+
+  // 탭(클릭)한 낱말의 설명. 손가락은 넓으니 바로 옆 글자까지 찾아봐요.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (!target || boxRef.current?.contains(target)) return;
+      if (window.getSelection()?.toString()) return; // 글자를 고르는 중이에요
+      let info: (Shown & { word: string }) | null = null;
+      for (const dx of [0, -5, 5, -10, 10]) {
+        const hit = hitAt(e.clientX + dx, e.clientY, target);
+        info = hit && resolve(hit);
+        if (info) break;
+      }
+      if (!info) return;
+      const inEditor = Boolean(target.closest('.editor'));
+      lastKeyRef.current = `${info.lang}|${info.word}|${Math.round(info.top)}|${Math.round(info.left)}`;
+      openedAt = Date.now();
+      setShown({ ...info, tap: inEditor ? 'above' : 'below', canGo: !inEditor && Boolean(target.closest('.rows')) });
+    };
+    let openedAt = 0;
+    const hideTap = () => { if (shownTapRef.current) { lastKeyRef.current = ''; setShown(null); } };
+    // 입력칸을 탭하면 키보드가 올라오며 화면이 밀리는데, 그건 닫는 이유가 아니에요.
+    const hideAfterSettle = () => { if (Date.now() - openedAt > 600) hideTap(); };
+    const onDown = (e: PointerEvent) => { if (!boxRef.current?.contains(e.target as Node)) hideTap(); };
+    document.addEventListener('click', onClick);
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('input', hideTap, true);
+    document.addEventListener('keydown', hideTap, true);
+    window.addEventListener('scroll', hideAfterSettle, { passive: true, capture: true });
+    window.addEventListener('resize', hideAfterSettle);
+    return () => {
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('input', hideTap, true);
+      document.removeEventListener('keydown', hideTap, true);
+      window.removeEventListener('scroll', hideAfterSettle, { capture: true });
+      window.removeEventListener('resize', hideAfterSettle);
+    };
+  }, []);
 
   useEffect(() => {
-    if (window.matchMedia?.('(hover: none)').matches) return; // 휴대폰은 마우스가 없어요
+    if (window.matchMedia?.('(hover: none)').matches) return; // 휴대폰은 마우스가 없어요 (탭은 위에서 받아요)
     let raf = 0, showT = 0, hideT = 0;
     let last: MouseEvent | null = null;
     const hide = () => { window.clearTimeout(showT); lastKeyRef.current = ''; setShown(null); };
@@ -43,6 +93,7 @@ export function HoverLayer() {
       const e = last; if (!e) return;
       const target = e.target as Element | null;
       if (!target || boxRef.current?.contains(target)) { window.clearTimeout(hideT); return; }
+      if (shownTapRef.current) return; // 탭으로 연 창은 마우스가 지나가도 그대로 둬요
       const hit = hitAt(e.clientX, e.clientY, target);
       const info = hit && resolve(hit);
       const key = info ? `${info.lang}|${info.word}|${Math.round(info.top)}|${Math.round(info.left)}` : '';
@@ -73,16 +124,20 @@ export function HoverLayer() {
     const b = boxRef.current;
     if (!shown || !b) { setPos(null); return; }
     const w = b.offsetWidth, h = b.offsetHeight;
-    const left = Math.max(8, Math.min(shown.left, window.innerWidth - w - 8));
-    const top = shown.top - h - 4 >= 8 ? shown.top - h - 4 : shown.bottom + 4;
+    const left = Math.max(8, Math.min(shown.left - 12, window.innerWidth - w - 8));
+    const above = shown.top - h - 6, below = shown.bottom + 6;
+    const fitsBelow = below + h <= window.innerHeight - 8;
+    const top = shown.tap === 'below' ? (fitsBelow || above < 8 ? below : above)
+      : above >= 8 ? above : below;
     setPos({ left, top });
   }, [shown]);
 
   if (!shown) return null;
   const { doc, decl, lang } = shown;
   return (
-    <div className="hov" ref={boxRef} role="tooltip" style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
-      onMouseLeave={() => { lastKeyRef.current = ''; setShown(null); }}>
+    <div className={`hov ${shown.tap ? 'tap' : ''}`} ref={boxRef} role="tooltip" style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}
+      onMouseLeave={shown.tap ? undefined : () => { lastKeyRef.current = ''; setShown(null); }}>
+      {shown.tap && <button type="button" className="hov-x" aria-label="설명 닫기" onClick={() => { lastKeyRef.current = ''; setShown(null); }}>×</button>}
       {doc?.sig && <pre className="hov-sig dm"><code dangerouslySetInnerHTML={{ __html: doc.sig.split('\n').map((l) => highlight(l, sigLang(doc.sig!, lang))).join('\n') }} /></pre>}
       <div className="hov-b">
         {doc?.title && <div className="hov-t">{doc.title}</div>}
@@ -91,6 +146,14 @@ export function HoverLayer() {
           <div className="hov-decl">
             <span>{decl.line + 1}번째 줄에서 선언했어요</span>
             <code className="dm" dangerouslySetInnerHTML={{ __html: highlight(decl.text, lang) }} />
+            {shown.canGo && document.getElementById(`L${decl.line + 1}`) && (
+              <button type="button" className="hov-go" onClick={() => {
+                const el = document.getElementById(`L${decl.line + 1}`);
+                setShown(null); lastKeyRef.current = '';
+                el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                (el?.querySelector('button.num') as HTMLButtonElement | null)?.click();
+              }}>{decl.line + 1}번째 줄로 가기 ›</button>
+            )}
           </div>
         )}
         {doc?.link && <a href={doc.link} target="_blank" rel="noreferrer">공식 문서 열기 ↗</a>}
