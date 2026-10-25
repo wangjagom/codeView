@@ -546,7 +546,8 @@ button.num { border: 0; background: none; font: inherit; line-height: inherit; c
 .txt { --hang: calc((var(--ind, 0) + 2) * 1ch); white-space: pre-wrap; overflow-wrap: anywhere; padding-left: var(--hang); text-indent: calc(-1 * var(--hang)); padding-right: 14px; min-width: 0; tab-size: 2; cursor: pointer; }
 /* 줄바꿈 끄기: 옆으로 밀어서 보고, 줄 번호와 리뷰는 왼쪽에 붙어 있어요 */
 .rows.nowrap { overflow-x: auto; container-type: inline-size; overscroll-behavior-x: contain; }
-.rows.nowrap .rows-in { display: inline-block; min-width: 100%; vertical-align: top; }
+.rows.nowrap .rows-in { width: max-content; min-width: 100%; }
+.rows.nowrap .txt { padding-right: 24px; }
 .rows.nowrap .txt { white-space: pre; padding-left: 0; text-indent: 0; overflow-wrap: normal; }
 .rows.nowrap .ln { position: sticky; left: 0; z-index: 1; background: linear-gradient(var(--row-tint, transparent), var(--row-tint, transparent)), var(--ed-bg); box-shadow: 6px 0 8px -6px rgba(0, 0, 0, .7); }
 .rows.nowrap .inl { position: sticky; left: 0; width: calc(100cqw - var(--gut, 44px) - 14px); box-sizing: border-box; }
@@ -700,9 +701,9 @@ button.num { border: 0; background: none; font: inherit; line-height: inherit; c
 .cf-bar .fi { flex: none; margin-right: 4px; }
 .cf-name { flex: 1; min-width: 0; font: 500 14px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cf-name small { margin-left: 8px; font: 12.5px var(--font); color: var(--ed-ln); }
-.cf-btn { flex: none; display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 6px; border: 0; border-radius: 10px; background: transparent; color: #cfd5dc; font: 700 14px var(--font); cursor: pointer; }
+.cf-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 6px; border: 0; border-radius: 10px; background: transparent; color: #cfd5dc; font: 700 14px var(--font); cursor: pointer; }
 .cf-btn.big { font-size: 17px; }
-.cf-btn sup { font-size: 10px; margin-left: 1px; }
+.cf-btn sup { font-size: 11px; margin-left: 1px; line-height: 1; }
 .cf-btn:hover:not(:disabled) { background: #2a2d2e; }
 .cf-btn:disabled { opacity: .35; cursor: default; }
 .cf-btn[aria-pressed="true"] { color: #4daafc; }
