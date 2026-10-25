@@ -15,3 +15,13 @@ describe('friendlyError', () => {
     expect(friendlyError('boom')).toBe('boom');
   });
 });
+
+describe('알림 설정 표가 없을 때', () => {
+  const err = { message: "Could not find the table 'public.notification_prefs' in the schema cache", code: 'PGRST205' };
+  it('알아보고 한국어로 알려 줘요', async () => {
+    const { isMissingPrefs, friendlyError } = await import('./api');
+    expect(isMissingPrefs(err)).toBe(true);
+    expect(isMissingPrefs(new Error('permission denied for table notification_prefs'))).toBe(false);
+    expect(friendlyError(err)).toContain('20261025000000_notification_prefs_fix.sql');
+  });
+});

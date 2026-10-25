@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { Header } from '../components/Layout';
-import { friendlyError, getNotificationPrefs, saveNotificationPrefs, updateProfile, type NotificationPrefs } from '../lib/api';
+import { friendlyError, getNotificationPrefs, isMissingPrefs, saveNotificationPrefs, updateProfile, type NotificationPrefs } from '../lib/api';
 import { MIN_PASSWORD } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -15,8 +15,8 @@ import { Dots, Expand, Loading } from '../components/Motion';
 
 const THEMES: [Theme, string][] = [['system', '시스템'], ['light', '라이트'], ['dark', '다크']];
 
-function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: (v: boolean) => void }) {
-  return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />;
+function Switch({ on, label, onChange, disabled }: { on: boolean; label: string; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return <button type="button" className="switch" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)} />;
 }
 
 export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view: 'mine' | 'saved') => void }) {
@@ -44,13 +44,16 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [notifyOn, setNotifyOn] = useState(false);
   const [dirty, setDirty] = useState(false);
+  // 서버에 저장된 이메일이 있는지 (없으면 끌 때 저장할 것도 없어요) · 알림 표가 아직 없는지
+  const [stored, setStored] = useState(false);
+  const [prefsMissing, setPrefsMissing] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const [theme, setThemeState] = useState<Theme>(getTheme);
 
   useEffect(() => {
     getNotificationPrefs()
-      .then((p) => { setPrefs(p ?? { email: '', on_review: true, on_request: true }); setNotifyOn(Boolean(p?.email)); })
-      .catch(() => setPrefs({ email: '', on_review: true, on_request: true }));
+      .then((p) => { setPrefs(p ?? { email: '', on_review: true, on_request: true }); setNotifyOn(Boolean(p?.email)); setStored(Boolean(p?.email)); })
+      .catch((e) => { setPrefs({ email: '', on_review: true, on_request: true }); if (isMissingPrefs(e)) setPrefsMissing(true); });
   }, []);
 
   const change = (patch: Partial<NotificationPrefs>) => { if (prefs) { setPrefs({ ...prefs, ...patch }); setDirty(true); } };
@@ -59,8 +62,8 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
     if (!prefs) return;
     const email = on ? prefs.email.trim() : '';
     if (on && !/^\S+@\S+\.\S+$/.test(email)) { toast('알림 받을 이메일을 적어 주세요'); document.getElementById('notifyEmail')?.focus(); return; }
-    try { await saveNotificationPrefs(me.id, { ...prefs, email }); setDirty(false); toast(email ? '알림 설정을 저장했어요' : '이메일 알림을 껐어요'); }
-    catch (e) { toast(friendlyError(e)); }
+    try { await saveNotificationPrefs(me.id, { ...prefs, email }); setDirty(false); setStored(Boolean(email)); toast(email ? '알림 설정을 저장했어요' : '이메일 알림을 껐어요'); }
+    catch (e) { if (isMissingPrefs(e)) { setPrefsMissing(true); setNotifyOn(false); } toast(friendlyError(e)); }
   };
 
   const changePassword = async () => {
@@ -106,8 +109,9 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
         {!prefs ? <div className="item"><Loading className="muted small" /></div> : (
           <>
             <div className="item">
-              <span className="body"><span className="t">이메일 알림 <span className="muted small">선택</span></span><span className="m">{notifyOn && prefs.email ? prefs.email : '이메일은 알림에만 쓰고 로그인에는 쓰지 않아요'}</span></span>
-              <Switch on={notifyOn} label="이메일로 알림 받기" onChange={(v) => { setNotifyOn(v); if (!v) savePrefs(false); else setDirty(true); }} />
+              <span className="body"><span className="t">이메일 알림 <span className="muted small">선택</span></span><span className="m">{prefsMissing ? '아직 준비 중이에요 · 팀장이 Supabase SQL을 실행하면 켤 수 있어요' : notifyOn && prefs.email ? prefs.email : '이메일은 알림에만 쓰고 로그인에는 쓰지 않아요'}</span></span>
+              <Switch on={notifyOn} label="이메일로 알림 받기" disabled={prefsMissing}
+                onChange={(v) => { setNotifyOn(v); if (v) setDirty(true); else if (stored) savePrefs(false); else setDirty(false); }} />
             </div>
             <Expand open={notifyOn}>
                 <div className="item"><input className="inp" id="notifyEmail" type="email" autoComplete="email" value={prefs.email} placeholder="알림 받을 이메일" onChange={(e) => change({ email: e.target.value })} /></div>

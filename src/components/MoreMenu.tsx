@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
-export interface MenuItem { label: string; icon: string; hint?: string; onSelect: () => void }
+/** checked를 주면 켜고 끄는 항목이 돼요: 오른쪽에 스위치가 보이고, 눌러도 메뉴가 닫히지 않아요. */
+export interface MenuItem { label: string; icon: string; hint?: string; checked?: boolean; onSelect: () => void }
 
 /** ⋯ 더보기: 자주 안 쓰는 동작을 접어 두는 작은 메뉴. 바깥을 누르거나 Esc면 닫혀요. */
 export function MoreMenu({ items, label = '더보기' }: { items: MenuItem[]; label?: string }) {
@@ -35,11 +36,16 @@ export function MoreMenu({ items, label = '더보기' }: { items: MenuItem[]; la
             if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
             if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
           }}>
-          {items.map((it) => (
-            <button key={it.label} type="button" role="menuitem" onClick={() => { setOpen(false); it.onSelect(); }}>
-              <Icon name={it.icon} /><span className="menu-l">{it.label}</span>{it.hint && <span className="menu-h">{it.hint}</span>}
-            </button>
-          ))}
+          {items.map((it) => {
+            const toggle = it.checked !== undefined;
+            return (
+              <button key={it.label} type="button" role={toggle ? 'menuitemcheckbox' : 'menuitem'} aria-checked={toggle ? it.checked : undefined}
+                className={toggle ? 'menu-tg' : undefined} onClick={() => { if (!toggle) setOpen(false); it.onSelect(); }}>
+                <Icon name={it.icon} /><span className="menu-l">{it.label}</span>{it.hint && <span className="menu-h">{it.hint}</span>}
+                {toggle && <span className="menu-sw" aria-hidden="true" />}
+              </button>
+            );
+          })}
         </div>
       )}
     </span>

@@ -171,7 +171,7 @@ export function PostDetail({ id }: { id: string }) {
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
             <MoreMenu items={[
               { label: '크게 보기', icon: 'expand', hint: '코드만 화면 가득', onSelect: () => setBig(true) },
-              { label: wrap ? '줄바꿈 끄기' : '줄바꿈 켜기', icon: 'wrap', hint: wrap ? '긴 줄을 옆으로 밀어서 봐요' : '긴 줄을 화면 폭에 맞춰 꺾어요', onSelect: toggleWrap },
+              { label: '줄바꿈', icon: 'wrap', hint: wrap ? '긴 줄을 화면에 맞춰 꺾어요' : '긴 줄은 옆으로 밀어서 봐요', checked: wrap, onSelect: toggleWrap },
               { label: '디스코드용 복사', icon: 'chat', hint: '코드 블록 + 링크 (앞 15줄)', onSelect: () => copyChat(discordText(shareInput()), '디스코드') },
               { label: '카톡·메신저용 복사', icon: 'chat', hint: '글자만 · 짧게 (앞 8줄)', onSelect: () => copyChat(plainText(shareInput()), '카톡·메신저') },
               { label: '파일 저장', icon: 'download', hint: fileName, onSelect: saveFile },

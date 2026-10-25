@@ -38,6 +38,9 @@ export interface NotificationPrefs {
   on_request: boolean;
 }
 
+/** 알림 설정 표가 아직 없을 때 (20261025000000_notification_prefs_fix.sql을 실행하기 전) */
+export const isMissingPrefs = (e: unknown) => /notification_prefs/.test(e instanceof Error ? e.message : String((e as { message?: unknown })?.message ?? e)) && /schema cache|does not exist|Could not find/i.test(e instanceof Error ? e.message : String((e as { message?: unknown })?.message ?? e));
+
 export async function getNotificationPrefs(): Promise<NotificationPrefs | null> {
   const rows = must(await supabase.from('notification_prefs').select('email, on_review, on_request')) as { email: string | null; on_review: boolean; on_request: boolean }[];
   return rows[0] ? { ...rows[0], email: rows[0].email ?? '' } : null;
@@ -257,6 +260,7 @@ export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message
     : e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message)
     : String(e);
+  if (isMissingPrefs(e)) return '이메일 알림은 아직 준비 중이에요. Supabase에서 새 SQL(20261025000000_notification_prefs_fix.sql)을 실행하면 쓸 수 있어요.';
   if (/code changed/.test(msg)) return '그 사이 코드가 바뀌어서 이 제안은 적용할 수 없어요.';
   if (/only the author/.test(msg)) return '수정 제안은 코드를 올린 사람만 적용할 수 있어요.';
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
