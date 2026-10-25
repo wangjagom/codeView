@@ -166,7 +166,7 @@ export function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onR
               </div>
               <Expand open={confirmDel === c.id}>
                 <div className="cm-del">
-                  <span>{general ? (thread.comments.length === 1 ? '이 댓글을 지울까요?' : '이 댓글을 지울까요? 답글은 남아요.') : thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요.' : '이 리뷰를 지울까요?'}</span>
+                  <span>{general ? (thread.comments.length === 1 ? '이 댓글을 지울까요?' : '이 댓글을 지울까요? 답글은 남아요') : thread.comments.length === 1 ? '이 리뷰를 지울까요? 대화도 같이 없어져요' : '이 리뷰를 지울까요?'}</span>
                   <button type="button" className="btn sm" onClick={() => setConfirmDel(null)}>취소</button>
                   <button type="button" className="btn sm danger-btn" disabled={busy} onClick={async () => { setBusy(true); const ok = await onDelete?.(c.id); setBusy(false); if (ok) setConfirmDel(null); }}>삭제</button>
                 </div>
@@ -190,12 +190,12 @@ export function ThreadBox({ thread, lines, lang, person, isAuthor, readOnly, onR
               {s && (
                 <div className="sugg">
                   <div className="sugg-h">
-                    <span>수정 제안 · {s.from}{s.count > 1 ? `–${s.from + s.count - 1}` : ''}줄</span>
+                    <span>수정 제안 · {s.from}{s.count > 1 ? `–${s.from + s.count - 1}` : ''}번째 줄</span>
                     <span className="sp" />
                     {c.applied_at ? <span className="applied">적용됨</span>
-                      : state === 'stale' ? <span>코드가 바뀌어 적용 불가</span>
+                      : state === 'stale' ? <span>코드가 바뀌어 적용할 수 없어요</span>
                       : isAuthor && !readOnly ? <button type="button" className="btn primary sm with-ic" onClick={() => onApply?.(c.id)}><Icon name="check" />제안 적용</button>
-                      : <span>작성자만 적용 가능</span>}
+                      : <span>글쓴이만 적용할 수 있어요</span>}
                   </div>
                   <div className="diff dm" data-lang={lang} data-code-all="diff">
                     {s.original.map((t, i) => <div className="d" data-code="diff" key={'d' + i} dangerouslySetInnerHTML={{ __html: highlight(t, lang) || ' ' }} />)}
@@ -288,7 +288,7 @@ function Composer({ line, lines, lang, onCancel, onSubmit }: {
         </div>
       </Expand>
       <div className="row-a">
-        <span className="hint">⌘/Ctrl + Enter로 등록</span>
+        <span className="hint">Ctrl/⌘ + Enter로 남기기</span>
         <button type="button" className="btn ghost sm" onClick={onCancel}>취소</button>
         <button className="btn primary sm" disabled={busy || !body.trim()}>리뷰 남기기</button>
       </div>

@@ -156,7 +156,7 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
           </>
         )}
       </div>
-      <p className="muted small lead">메일 발송 준비 중 · 이메일은 본인만 볼 수 있어요</p>
+      <p className="muted small lead">메일 발송은 준비 중이에요 · 이메일은 나만 볼 수 있어요</p>
 
       <div className="sec-h"><h2>계정</h2></div>
       <div className="card list">
@@ -173,7 +173,7 @@ export function Me({ onTeam, onShowAll }: { onTeam: () => void; onShowAll: (view
         <button type="button" className="item" aria-expanded={confirmOut} onClick={() => setConfirmOut(!confirmOut)}><span className="body"><span className="t">로그아웃</span></span><Icon name={confirmOut ? 'down' : 'chev'} className="chev" /></button>
         <Expand open={confirmOut}>
           <div className="item stack">
-            <span className="small">로그아웃할까요? 이름과 비밀번호로 다시 들어올 수 있어요.</span>
+            <span className="small">로그아웃할까요? 이름과 비밀번호로 다시 들어올 수 있어요</span>
             <div className="two-btn"><button type="button" className="btn" onClick={() => setConfirmOut(false)}>취소</button><button type="button" className="btn danger-btn" onClick={signOut}>로그아웃</button></div>
           </div>
         </Expand>

@@ -265,7 +265,7 @@ export function friendlyError(e: unknown): string {
   if (/suggestion needs a line/.test(msg)) return '수정 제안은 줄 리뷰에만 달 수 있어요.';
   if (isMissingPrefs(e)) return '이메일 알림은 아직 준비 중이에요. Supabase에서 새 SQL(20261025000000_notification_prefs_fix.sql)을 실행하면 쓸 수 있어요.';
   if (/code changed/.test(msg)) return '그 사이 코드가 바뀌어서 이 제안은 적용할 수 없어요.';
-  if (/only the author/.test(msg)) return '수정 제안은 코드를 올린 사람만 적용할 수 있어요.';
+  if (/only the author/.test(msg)) return '수정 제안은 글쓴이만 적용할 수 있어요.';
   if (/already applied/.test(msg)) return '이미 적용된 제안이에요.';
   if (/invalid invite code/.test(msg)) return '초대 코드가 맞지 않아요. 팀장에게 새 코드를 받아 주세요.';
   if (/team needs an owner/.test(msg)) return '팀장이 한 명은 있어야 해요. 다른 팀원을 먼저 팀장으로 지정해 주세요.';

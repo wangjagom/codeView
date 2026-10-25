@@ -186,7 +186,7 @@ export function TeamSettings({ onTeam }: { onTeam: () => void }) {
         <form className="card card-pad form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => updateTeam(team.id, { name: name.trim() || team.name, tasks: tasks.length ? tasks : DEFAULT_TASKS }), '팀 정보를 저장했어요')) setEditing(false); }}>
           <div className="field"><label htmlFor="setName">팀 이름</label><input className="inp" id="setName" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></div>
           <div className="field"><label htmlFor="setTasks">과제</label><TaskEditor id="setTasks" value={tasks} onChange={setTasks} />
-            <span className="hint">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요.</span></div>
+            <span className="hint">과제를 지워도 이미 올라온 코드의 과제 표시는 그대로 남아요</span></div>
           <button className="btn primary wide">저장</button>
         </form>
       ) : (

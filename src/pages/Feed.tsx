@@ -131,7 +131,7 @@ export function PostItem({ post, hit, likes, saved }: { post: Post; hit?: Search
           <span className="hit"><span className="hit-at">{hit.file}:{hit.line}</span><code>{hit.text}</code></span>
         )}
         {hit?.where === 'ask' && <span className="hit"><span className="hit-at">설명</span><span className="hit-txt">{hit.text}</span></span>}
-        <span className="cnt">{e > 0 && <span className="e">오류 {e}</span>}{w > 0 && <span className="w">경고 {w}</span>}<span>{isShare(post) ? '의견' : '리뷰'} {n}</span>{likes > 0 && <span className="likes"><Icon name="thumbOn" />{likes}</span>}{post.version > 1 && <span>v{post.version}</span>}</span>
+        <span className="cnt">{e > 0 && <span className="e">오류 {e}</span>}{w > 0 && <span className="w">경고 {w}</span>}<span>{isShare(post) ? '댓글' : '리뷰'} {n}</span>{likes > 0 && <span className="likes"><Icon name="thumbOn" />{likes}</span>}{post.version > 1 && <span>v{post.version}</span>}</span>
       </span>
       {isShare(post) ? <span className="st share">공유</span> : <span className={`st ${post.status}`}>{STATUS_LABEL[post.status]}</span>}
     </a>

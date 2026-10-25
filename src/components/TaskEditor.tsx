@@ -63,7 +63,7 @@ export function TaskEditor({ value, onChange, id = 'taskInput' }: { value: strin
         )))}
       </div>
       <div className="task-add">
-        <input id={id} value={input} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름 입력 후 Enter" autoComplete="off"
+        <input id={id} value={input} maxLength={TASK_NAME_MAX} placeholder="새 과제 이름을 적고 Enter" autoComplete="off"
           onChange={(e) => { setInput(e.target.value); setErr(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); add(); } }} />
         <button type="button" className="btn sm" onClick={() => add()}>추가</button>

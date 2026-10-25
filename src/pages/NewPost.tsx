@@ -137,7 +137,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
     const empty = ready.findIndex((f) => !f.code.trim());
     if (empty >= 0) { setActive(empty); toast(files.length > 1 ? `${empty + 1}번째 파일이 비어 있어요. 코드를 넣거나 파일을 빼 주세요` : '코드를 붙여넣어 주세요'); document.getElementById('nCode')?.focus(); return; }
     const dup = ready.findIndex((f, i) => ready.findIndex((g) => g.name.toLowerCase() === f.name.toLowerCase()) !== i);
-    if (dup >= 0) { setActive(dup); toast(`파일 이름 '${ready[dup].name}'이(가) 겹쳐요`); document.getElementById('nFile')?.focus(); return; }
+    if (dup >= 0) { setActive(dup); toast(`같은 파일 이름이 있어요: ${ready[dup].name}`); document.getElementById('nFile')?.focus(); return; }
     setBusy(true);
     if (edit) {
       try { await saveEdit(edit, ready); } catch (err) { toast(friendlyError(err)); } finally { setBusy(false); }

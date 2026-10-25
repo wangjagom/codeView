@@ -114,7 +114,7 @@ export function PostDetail({ id }: { id: string }) {
   const onApply = (cid: string) => { run(() => applySuggestion(cid), '제안을 적용했어요'); };
   const onEdit = (cid: string, body: string) => run(() => updateComment(cid, body), '리뷰를 고쳤어요');
   const onDelete = (cid: string) => run(() => deleteComment(cid), '리뷰를 지웠어요');
-  const onStatus = (s: Status) => { run(() => setStatus(post.id, s), `'${STATUS_LABEL[s]}'(으)로 바꿨어요`); };
+  const onStatus = (s: Status) => { run(() => setStatus(post.id, s), `'${STATUS_LABEL[s]}' 상태로 바꿨어요`); };
 
   const postLink = () => location.href.split('#')[0] + href({ name: 'post', id: post.id });
   const shareInput = (): ShareInput => ({
@@ -155,7 +155,7 @@ export function PostDetail({ id }: { id: string }) {
       </div>
       {post.ask && <div className="ask"><span className="lbl">{share ? '설명' : '요청 사항'}</span><span className="body cm-text"><RichText text={post.ask} lang={post.lang} /></span></div>}
       {share ? (
-        <div className="card status-card"><div className="status-row"><span className="st share">코드 공유</span><span className="sp" /><span className="muted small">질문·의견 {reviewCount}</span></div></div>
+        <div className="card status-card"><div className="status-row"><span className="st share">코드 공유</span><span className="sp" /><span className="muted small">의견 {reviewCount}</span></div></div>
       ) : <div className="card status-card">
         <div className="status-row">
           <StatusPill status={post.status} />
@@ -208,10 +208,10 @@ export function PostDetail({ id }: { id: string }) {
               { label: shownFiles.length > 1 ? `zip 저장 (${shownFiles.length}개)` : 'zip 저장', icon: 'zip', hint: '모든 파일 + README.md', onSelect: saveZip },
             ]} />
           </div>
-          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄을 누르고 왼쪽 <b className="hint-plus">+</b> 로 {share ? '질문·의견을' : '리뷰를'} 남겨요</>}</p>
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄을 눌러 <b className="hint-plus">+</b> 로 {share ? '의견을' : '리뷰를'} 남겨요</>}</p>
           {big ? <div className="code-away muted small">크게 보기로 보는 중이에요</div> : codeView()}
           {!readOnly && !lineThreads.some((t) => (t.file ?? 0) === fi) && (
-            <div className="no-review">{share ? '줄 질문·의견 없음' : isAuthor || !problems[0] ? '줄 리뷰 없음'
+            <div className="no-review">{share ? '줄 의견 없음' : isAuthor || !problems[0] ? '줄 리뷰 없음'
               : <>줄 리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
           )}
         </div>
@@ -239,7 +239,7 @@ export function PostDetail({ id }: { id: string }) {
         {isAuthor && (
           <div className="danger">
             {confirmDelete ? (
-              <><span>이 코드와 리뷰를 모두 지울까요? 되돌릴 수 없어요.</span><button type="button" className="btn sm" onClick={() => setConfirmDelete(false)}>취소</button>
+              <><span>이 코드와 리뷰를 모두 지울까요? 되돌릴 수 없어요</span><button type="button" className="btn sm" onClick={() => setConfirmDelete(false)}>취소</button>
                 <button type="button" className="btn sm danger-btn" onClick={async () => { try { await deletePost(post.id); await refresh(); toast('삭제했어요'); navigate({ name: 'feed' }); } catch (err) { toast(friendlyError(err)); } }}>삭제</button></>
             ) : <button type="button" className="txt-btn red with-ic" onClick={() => setConfirmDelete(true)}><Icon name="trash" />이 글 삭제</button>}
           </div>
