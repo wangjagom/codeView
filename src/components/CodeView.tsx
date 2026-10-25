@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import type React from 'react';
 import type { Problem } from '../lib/checks';
 import { highlight, highlightWithMark } from '../lib/highlight';
 import { fenceOf } from '../lib/langs';
@@ -28,11 +29,29 @@ interface Props {
   meId?: string;
   onEdit?: (commentId: string, body: string) => Promise<boolean>;
   onDelete?: (commentId: string) => Promise<boolean>;
+  /** 줄바꿈 (끄면 옆으로 밀어서 봐요) */
+  wrap?: boolean;
+  /** 글자 크기 px (크게 보기) */
+  fontPx?: number;
 }
 
-export function CodeView({ code, lang, problems, threads, person, isAuthor, readOnly, onComment, onResolve, onApply, meId, onEdit, onDelete }: Props) {
+/** 꺾인 줄을 들여쓰기에 맞춰 안쪽에서 이어 가려고 앞 공백 폭을 재요 (탭은 2칸, 너무 깊으면 12칸까지만). */
+const indentOf = (s: string) => {
+  let n = 0;
+  for (const ch of s) { if (ch === ' ') n += 1; else if (ch === '\t') n += 2; else break; }
+  return Math.min(n, 12);
+};
+/** 단어 중간보다 . / , ( 뒤에서 먼저 꺾이게 (<wbr>은 복사할 때 글자로 안 남아요) */
+const softBreaks = (html: string) => html.split(/(<[^>]+>)/).map((part) => (part.startsWith('<') ? part : part.replace(/([./,(])(?=\S)/g, '$1<wbr>'))).join('');
+
+export function CodeView({ code, lang, problems, threads, person, isAuthor, readOnly, onComment, onResolve, onApply, meId, onEdit, onDelete, wrap = true, fontPx }: Props) {
   const lines = useMemo(() => code.split('\n'), [code]);
   const [composer, setComposer] = useState<number | null>(null);
+  // 줄을 누르면 그 줄에만 + 가 떠요. 같은 줄을 다시 누르면 풀려요.
+  const [sel, setSel] = useState<number | null>(null);
+  const pick = (ln: number) => setSel((cur) => (cur === ln ? null : ln));
+  const fs = fontPx ?? 13;
+  const gut = `${Math.ceil(String(lines.length).length * fs * 0.62) + 32}px`;
 
   // 줄 번호가 코드 길이를 넘는 스레드는 마지막 줄에 붙여요.
   const byLine = useMemo(() => {
@@ -45,31 +64,31 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
   }, [threads, lines.length]);
 
   return (
-    <div className="rows dm" data-lang={lang} data-code-all="row">
+    <div className={`rows dm ${wrap ? '' : 'nowrap'}`} data-lang={lang} data-code-all="row"
+      style={{ '--gut': gut, ...(fontPx ? { fontSize: fontPx } : {}) } as React.CSSProperties}>
+      <div className="rows-in">
       {lines.map((text, i) => {
         const ln = i + 1;
         const prob = problems.find((p) => p.line === ln);
         const ts = byLine.get(ln) ?? [];
         const count = ts.reduce((n, t) => n + t.comments.length, 0);
-        const html = prob ? highlightWithMark(text, prob.match, prob.sev, lang) : highlight(text, lang);
+        const raw = prob ? highlightWithMark(text, prob.match, prob.sev, lang) : highlight(text, lang);
+        const html = wrap ? softBreaks(raw) : raw;
+        const on = !readOnly && sel === ln;
         return (
           <div key={ln}>
-            <div className={`row ${prob ? prob.sev : ''}`} id={`L${ln}`}>
-              <div className="gut">
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className={count ? 'cnt' : ''}
-                    aria-label={count ? `${ln}번째 줄 리뷰 ${count}개, 리뷰 추가` : `${ln}번째 줄에 리뷰 남기기`}
-                    onClick={() => setComposer(composer === ln ? null : ln)}
-                  >
-                    {count || '+'}
-                  </button>
+            <div className={`row ${prob ? prob.sev : ''} ${on ? 'sel' : ''} ${count ? 'has-cm' : ''}`} id={`L${ln}`}>
+              <div className="ln">
+                {on && (
+                  <button type="button" className="ln-add" aria-label={`${ln}번째 줄에 리뷰 남기기`} aria-expanded={composer === ln}
+                    onClick={() => setComposer(composer === ln ? null : ln)}>+</button>
                 )}
+                {readOnly ? <span className="num">{ln}</span>
+                  : <button type="button" className="num" aria-pressed={on} aria-label={`${ln}번째 줄 고르기${count ? ` · 리뷰 ${count}개` : ''}`} onClick={() => pick(ln)}>{ln}</button>}
               </div>
-              {readOnly ? <div className="num">{ln}</div>
-                : <button type="button" className="num" tabIndex={-1} aria-hidden="true" onClick={() => setComposer(composer === ln ? null : ln)}>{ln}</button>}
-              <div className="txt" data-code="row" dangerouslySetInnerHTML={{ __html: html || ' ' }} />
+              <div className="txt" data-code="row" style={{ '--ind': indentOf(text) } as React.CSSProperties}
+                onClick={readOnly ? undefined : () => { if (!window.getSelection()?.toString()) pick(ln); }}
+                dangerouslySetInnerHTML={{ __html: html || ' ' }} />
             </div>
             {/* 비어 있으면 CSS(:empty)로 숨겨요. 늘 그려 둬야 리뷰 입력칸이 닫힐 때도 부드럽게 접혀요. */}
             <div className="inl">
@@ -95,6 +114,7 @@ export function CodeView({ code, lang, problems, threads, person, isAuthor, read
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

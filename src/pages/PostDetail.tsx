@@ -14,7 +14,8 @@ import { timeAgo } from '../lib/util';
 import { Loading } from '../components/Motion';
 import { RichText } from '../components/RichText';
 import { MoreMenu } from '../components/MoreMenu';
-import { copyText } from '../lib/util';
+import { copyText, readPref, writePref } from '../lib/util';
+import { CodeFull } from '../components/CodeFull';
 import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
 
@@ -25,6 +26,11 @@ export function PostDetail({ id }: { id: string }) {
   const [viewVersion, setViewVersion] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fileIdx, setFileIdx] = useState(0);
+  // 코드 보기 설정은 이 브라우저에 기억해요.
+  const [wrap, setWrap] = useState(() => readPref('cv-wrap') !== '0');
+  const [big, setBig] = useState(false);
+  const closeBig = useCallback(() => setBig(false), []);
+  const toggleWrap = () => { const v = !wrap; setWrap(v); writePref('cv-wrap', v ? null : '0'); };
 
   const load = useCallback(async () => {
     try { setData(await getPost(id)); setError(''); }
@@ -46,6 +52,7 @@ export function PostDetail({ id }: { id: string }) {
   const shownCode = curFile.code;
   const allProblems = useMemo(() => shownFiles.map((f) => checkCode(f.code, f.lang)), [shownFiles]);
   const problems = allProblems[fi] ?? [];
+  useEffect(() => { setBig(false); }, [id]);
 
   if (error) return <section><BackBar /><div className="empty">{error}</div></section>;
   if (!data || !post) return <section><div className="empty"><Loading /></div></section>;
@@ -55,6 +62,12 @@ export function PostDetail({ id }: { id: string }) {
   const e = problems.filter((p) => p.sev === 'e').length, w = problems.length - e;
   const reviewCount = data.threads.reduce((n, t) => n + t.comments.length, 0);
   const readOnly = viewVersion !== null && viewVersion !== post.version;
+
+  const codeView = (fontPx?: number) => (
+    <CodeView key={`${fi}-${viewVersion ?? 'now'}`} code={shownCode} lang={curFile.lang} problems={problems} threads={readOnly ? [] : data.threads.filter((t) => (t.file ?? 0) === fi)} person={person}
+      isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} meId={me.id} onEdit={onEdit} onDelete={onDelete}
+      wrap={wrap} fontPx={fontPx} />
+  );
 
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
     try { await fn(); await Promise.all([load(), refresh()]); if (ok) toast(ok); return true; }
@@ -154,14 +167,15 @@ export function PostDetail({ id }: { id: string }) {
             <CopyButton text={() => shownCode} label="코드 복사" onFail={toast} />
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
             <MoreMenu items={[
+              { label: '크게 보기', icon: 'expand', hint: '코드만 화면 가득', onSelect: () => setBig(true) },
+              { label: wrap ? '줄바꿈 끄기' : '줄바꿈 켜기', icon: 'wrap', hint: wrap ? '긴 줄을 옆으로 밀어서 봐요' : '긴 줄을 화면 폭에 맞춰 꺾어요', onSelect: toggleWrap },
               { label: '채팅용 복사', icon: 'chat', hint: '디스코드·카톡에 붙이기 좋게', onSelect: async () => toast((await copyText(chatText())) ? '채팅용으로 복사했어요' : '복사가 막혀 있어요. 코드를 길게 눌러 직접 복사해 주세요') },
               { label: '파일 저장', icon: 'download', hint: fileName, onSelect: saveFile },
               { label: shownFiles.length > 1 ? `zip 저장 (${shownFiles.length}개)` : 'zip 저장', icon: 'zip', hint: '모든 파일 + README.md', onSelect: saveZip },
             ]} />
           </div>
-          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>{share ? '줄 번호를 눌러 질문·의견을 남겨요' : '줄 번호를 눌러 리뷰를 남겨요'}</>}</p>
-          <CodeView key={`${fi}-${viewVersion ?? 'now'}`} code={shownCode} lang={curFile.lang} problems={problems} threads={readOnly ? [] : data.threads.filter((t) => (t.file ?? 0) === fi)} person={person}
-            isAuthor={isAuthor} readOnly={readOnly} onComment={onComment} onResolve={onResolve} onApply={onApply} meId={me.id} onEdit={onEdit} onDelete={onDelete} />
+          <p className="code-hint">{readOnly ? <><b>v{viewVersion}</b> 보는 중 · 지난 버전에는 리뷰를 달 수 없어요</> : <>줄을 누르고 왼쪽 <b className="hint-plus">+</b> 로 {share ? '질문·의견을' : '리뷰를'} 남겨요</>}</p>
+          {big ? <div className="code-away muted small">크게 보기로 보는 중이에요</div> : codeView()}
           {!readOnly && !data.threads.some((t) => (t.file ?? 0) === fi) && (
             <div className="no-review">{share ? '질문·의견 없음' : isAuthor || !problems[0] ? '리뷰 없음'
               : <>리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
@@ -193,6 +207,12 @@ export function PostDetail({ id }: { id: string }) {
           </div>
         )}
       </div>
+      {big && (
+        <CodeFull name={curFile.name} lang={curFile.lang} index={fi} total={shownFiles.length} wrap={wrap} onWrap={toggleWrap}
+          onFile={setFileIdx} onClose={closeBig}>
+          {(fs) => codeView(fs)}
+        </CodeFull>
+      )}
     </section>
   );
 }

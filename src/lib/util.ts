@@ -27,3 +27,11 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/** 이 브라우저에만 기억하는 작은 설정 (막혀 있어도 앱은 그대로 돌아가요) */
+export function readPref(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+export function writePref(key: string, value: string | null) {
+  try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* 기억 못 해도 괜찮아요 */ }
+}

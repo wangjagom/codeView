@@ -156,7 +156,7 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 .sheet { animation: cv-sheet .26s cubic-bezier(.2, .8, .2, 1) both; }
 .sg, .hov { animation: cv-pop-in .12s ease-out both; }
 .act-btn.done .ic { animation: cv-check .32s ease-out both; }
-.btn, .act-btn, .chip, .pick, .seg button, .txt-btn, .ed-act, .ed-chip, .item, .row, .gut button, .tabbar a { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, opacity .15s ease, transform .1s ease; }
+.btn, .act-btn, .chip, .pick, .seg button, .txt-btn, .ed-act, .ed-chip, .item, .row, .tabbar a { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, opacity .15s ease, transform .1s ease; }
 .btn:active:not(:disabled), .act-btn:active:not(:disabled), .chip:active, .pick:active, .ed-chip:active, .ed-act:active { transform: scale(.97); }
 .editor, input, textarea, select { transition: border-color .15s ease, box-shadow .15s ease; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -417,7 +417,7 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .paste { display: grid; gap: 8px; }
 
 /* 코드 입력칸·댓글 속 코드: VS Code Dark Modern 색 (라이트·다크 모두 같은 어두운 색) */
-.editor, .dm {
+.editor, .dm, .code-full {
   --ed-bg: #1f1f1f; --ed-bar: #181818; --ed-line: #2b2b2b; --ed-fg: #cccccc; --ed-ln: #6e7681;
   --ed-kw: #569cd6; --ed-ctrl: #c586c0; --ed-str: #ce9178; --ed-num: #b5cea8; --ed-com: #6a9955;
   --ed-fn: #dcdcaa; --ed-type: #4ec9b0; --ed-var: #9cdcfe; --ed-err: #f14c4c; --ed-warn: #cca700;
@@ -525,26 +525,35 @@ a.item:hover, button.item:hover { background: var(--fill); }
 .code-tools .more-btn { flex: none; }
 .code-hint { margin: 0; padding: 0 16px 10px; font-size: 12.5px; color: var(--faint); }
 .rows { font: 13px/1.8 var(--mono); padding: 6px 0 12px; background: var(--code-bg); }
-.row { display: grid; grid-template-columns: 26px 34px minmax(0, 1fr); align-items: start; }
+.rows-in { min-width: 0; }
+.row { display: grid; grid-template-columns: var(--gut, 44px) minmax(0, 1fr); align-items: start; cursor: default; }
 .row:hover { background: var(--code-line); }
 .row:target { background: var(--accent-soft); }
 .row.e { background: var(--red-soft); }
 .row.w { background: var(--orange-soft); }
-.gut { display: flex; justify-content: center; padding-top: 5px; }
-.gut button { width: 20px; height: 20px; border-radius: 6px; border: 0; background: var(--accent); color: var(--accent-fg); font: 700 13px/1 var(--font); opacity: 0; display: grid; place-items: center; padding: 0; }
-.row:hover .gut button, .gut button:focus-visible { opacity: 1; }
-@media (hover: none) { .gut button { opacity: .55; width: 20px; height: 20px; } }
-.gut button.cnt { opacity: 1; background: var(--accent-soft); color: var(--accent); font-size: 10.5px; }
-.num { color: var(--code-num); text-align: right; padding-right: 12px; user-select: none; font-variant-numeric: tabular-nums; }
-button.num { border: 0; background: none; font: inherit; line-height: inherit; cursor: pointer; padding-top: 0; padding-bottom: 0; padding-left: 0; }
-button.num:hover { color: var(--accent); text-decoration: underline; }
+/* 줄 번호 칸: 고른 줄에만 + 가 번호 왼쪽에 떠요 */
+.ln { display: flex; align-items: flex-start; justify-content: flex-end; gap: 4px; padding-right: 8px; min-width: 0; }
+.ln-add { flex: none; width: 18px; height: 18px; margin-top: calc((1.8em - 18px) / 2); border: 0; border-radius: 5px; padding: 0; background: var(--accent); color: var(--accent-fg); font: 700 14px/18px var(--font); cursor: pointer; animation: cv-pop-in .14s ease-out both; }
+.ln-add[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(0, 120, 212, .35); }
+.num { color: var(--code-num); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
+button.num { border: 0; background: none; font: inherit; line-height: inherit; color: inherit; cursor: pointer; padding: 0; }
+.ln .num { color: var(--code-num); }
+.row.sel .num { color: #ffffff; font-weight: 700; }
+.row.has-cm .num { color: #4daafc; font-weight: 700; }
 .row.e .num { color: var(--red); font-weight: 500; } .row.w .num { color: var(--orange); font-weight: 500; }
-.txt { white-space: pre-wrap; word-break: break-word; padding-right: 14px; min-width: 0; tab-size: 2; }
+/* 꺾인 줄은 그 줄 들여쓰기 + 2칸에서 이어져요 (첫 줄은 앞 공백 그대로) */
+.txt { --hang: calc((var(--ind, 0) + 2) * 1ch); white-space: pre-wrap; overflow-wrap: anywhere; padding-left: var(--hang); text-indent: calc(-1 * var(--hang)); padding-right: 14px; min-width: 0; tab-size: 2; cursor: pointer; }
+/* 줄바꿈 끄기: 옆으로 밀어서 보고, 줄 번호와 리뷰는 왼쪽에 붙어 있어요 */
+.rows.nowrap { overflow-x: auto; container-type: inline-size; overscroll-behavior-x: contain; }
+.rows.nowrap .rows-in { display: inline-block; min-width: 100%; vertical-align: top; }
+.rows.nowrap .txt { white-space: pre; padding-left: 0; text-indent: 0; overflow-wrap: normal; }
+.rows.nowrap .ln { position: sticky; left: 0; z-index: 1; background: linear-gradient(var(--row-tint, transparent), var(--row-tint, transparent)), var(--ed-bg); box-shadow: 6px 0 8px -6px rgba(0, 0, 0, .7); }
+.rows.nowrap .inl { position: sticky; left: 0; width: calc(100cqw - var(--gut, 44px) - 14px); box-sizing: border-box; }
 .sq-e { text-decoration: underline wavy var(--red); text-underline-offset: 4px; text-decoration-thickness: 1.3px; }
 .sq-w { text-decoration: underline wavy var(--orange); text-underline-offset: 4px; text-decoration-thickness: 1.3px; }
 .k, .kc { color: var(--t-kw); } .at { color: var(--t-fn); } .s { color: var(--t-str); } .n { color: var(--t-num); } .f { color: var(--t-fn); } .c { color: var(--t-com); font-style: italic; } .ty { color: var(--t-type); } .tg { color: var(--t-tag); }
 
-.inl { margin: 6px 14px 12px 60px; font-family: var(--font); font-size: 14px; line-height: 1.55; display: grid; gap: 8px; }
+.inl { margin: 6px 14px 12px var(--gut, 44px); font-family: var(--font); font-size: 14px; line-height: 1.55; display: grid; gap: 8px; }
 .prob { border-radius: 12px; padding: 10px 12px; background: var(--surface); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; }
 .prob .ic { width: auto; height: auto; font: 700 11px var(--font); padding: 2px 6px; border-radius: 5px; margin-top: 2px; color: #fff; }
 .prob.e .ic { background: var(--red); } .prob.w .ic { background: var(--orange); }
@@ -575,15 +584,17 @@ button.num:hover { color: var(--accent); text-decoration: underline; }
 
 /* 코드는 라이트 모드에서도 VS Code Dark Modern으로 보여요 (리뷰 속 코드 블록과 같게). */
 .rows.dm { background: var(--ed-bg); color: var(--ed-fg); }
-.rows.dm .row:hover { background: #2a2d2e; }
-.rows.dm .row:target { background: rgba(38, 79, 120, .55); }
-.rows.dm .row.e { background: rgba(241, 76, 76, .13); }
-.rows.dm .row.w { background: rgba(204, 167, 0, .12); }
+.rows.dm .row { background: var(--row-tint, transparent); }
+.rows.dm .row:hover { --row-tint: #2a2d2e; }
+.rows.dm .row:target { --row-tint: rgba(38, 79, 120, .55); }
+.rows.dm .row.e { --row-tint: rgba(241, 76, 76, .13); }
+.rows.dm .row.w { --row-tint: rgba(204, 167, 0, .12); }
+.rows.dm .row.sel { --row-tint: #1b3a5e; }
 .rows.dm .num { color: var(--ed-ln); }
 .rows.dm button.num:hover { color: #cccccc; }
 .rows.dm .row.e .num { color: var(--ed-err); } .rows.dm .row.w .num { color: var(--ed-warn); }
-.rows.dm .gut button { background: #0078d4; color: #ffffff; }
-.rows.dm .gut button.cnt { background: rgba(0, 120, 212, .25); color: #4daafc; }
+.rows.dm .row.has-cm .num { color: #4daafc; } .rows.dm .row.sel .num { color: #ffffff; }
+.rows.dm .ln-add { background: #0078d4; color: #ffffff; }
 .rows.dm .inl { color: var(--fg); }
 .rows.dm ::selection { background: rgba(38, 79, 120, .9); }
 .diff.dm { background: var(--ed-bg); color: var(--ed-fg); }
@@ -672,8 +683,34 @@ button.num:hover { color: var(--accent); text-decoration: underline; }
 @media (max-width: 520px) {
   .two { grid-template-columns: minmax(0, 1fr); }
   .rows { font-size: 12.5px; }
-  .row { grid-template-columns: 22px 28px minmax(0, 1fr); }
-  .num { padding-right: 8px; }
+  .ln { padding-right: 6px; }
   .inl { margin: 6px 10px 12px 10px; }
+  .rows.nowrap .inl { width: calc(100cqw - 20px); }
   .item { padding: 14px 16px; }
 }
+
+/* 코드 안내 문구의 + 표시 */
+.hint-plus { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: #0078d4; color: #fff; font-size: 12px; line-height: 1; vertical-align: -2px; }
+.code-away { padding: 28px 16px; text-align: center; background: var(--ed-bg); color: var(--ed-ln); }
+
+/* 크게 보기 */
+.code-full { position: fixed; inset: 0; z-index: 35; display: flex; flex-direction: column; background: var(--ed-bg); color: var(--ed-fg); animation: cv-fade .16s ease-out both; }
+.cf-bar { flex: none; display: flex; align-items: center; gap: 4px; min-height: 56px; padding: env(safe-area-inset-top) 8px 0 16px; border-bottom: 1px solid var(--ed-line); background: var(--ed-bar); }
+.cf-bar .fi { flex: none; margin-right: 4px; }
+.cf-name { flex: 1; min-width: 0; font: 500 14px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cf-name small { margin-left: 8px; font: 12.5px var(--font); color: var(--ed-ln); }
+.cf-btn { flex: none; display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 6px; border: 0; border-radius: 10px; background: transparent; color: #cfd5dc; font: 700 14px var(--font); cursor: pointer; }
+.cf-btn.big { font-size: 17px; }
+.cf-btn sup { font-size: 10px; margin-left: 1px; }
+.cf-btn:hover:not(:disabled) { background: #2a2d2e; }
+.cf-btn:disabled { opacity: .35; cursor: default; }
+.cf-btn[aria-pressed="true"] { color: #4daafc; }
+.cf-btn .ic { width: 20px; height: 20px; }
+.cf-close { background: #2a2d31; margin-left: 4px; }
+.cf-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.cf-body .rows { min-height: 100%; padding: 10px 0 40px; }
+.cf-foot { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--ed-line); background: var(--ed-bar); }
+.cf-foot button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 44px; border: 0; border-radius: 12px; background: #2a2d31; color: #e3e8ee; font: 600 14px var(--font); cursor: pointer; }
+.cf-foot button:disabled { opacity: .35; cursor: default; }
+.cf-foot .ic { width: 16px; height: 16px; }
+@media (min-width: 900px) { .cf-body .rows-in { max-width: 1100px; margin: 0 auto; } .rows.nowrap .rows-in { max-width: none; } }
