@@ -18,6 +18,8 @@ import { copyText, readPref, writePref } from '../lib/util';
 import { CodeFull } from '../components/CodeFull';
 import { GeneralComments } from '../components/GeneralComments';
 import { takeFocus } from '../lib/focus';
+import { Runner } from '../components/Runner';
+import { runKind } from '../lib/runner';
 import { discordText, plainText, type ShareInput } from '../lib/share';
 import { download, makeZip, safeName } from '../lib/zip';
 import { LangIcon } from '../components/LangIcon';
@@ -32,6 +34,7 @@ export function PostDetail({ id }: { id: string }) {
   // 코드 보기 설정은 이 브라우저에 기억해요.
   const [wrap, setWrap] = useState(() => readPref('cv-wrap') !== '0');
   const [big, setBig] = useState(false);
+  const [running, setRunning] = useState(false);
   const closeBig = useCallback(() => setBig(false), []);
   const toggleWrap = () => { const v = !wrap; setWrap(v); writePref('cv-wrap', v ? null : '0'); };
 
@@ -197,6 +200,7 @@ export function PostDetail({ id }: { id: string }) {
             {!e && !w && <span className="pill ok">검사 통과</span>}
           </div>
           <div className="code-tools" role="group" aria-label="복사">
+            {runKind(shownFiles) && <button type="button" className="act-btn run-btn" onClick={() => setRunning(true)}><Icon name="play" />실행</button>}
             <CopyButton text={() => shownCode} label="코드 복사" onFail={toast} />
             <CopyButton text={postLink} label="링크 복사" icon="link" onFail={toast} />
             <MoreMenu items={[
@@ -245,6 +249,12 @@ export function PostDetail({ id }: { id: string }) {
           </div>
         )}
       </div>
+      {running && (
+        <Runner title={post.title} files={shownFiles} onClose={() => setRunning(false)} onGoto={(file, line) => {
+          setRunning(false); setFileIdx(file);
+          if (line) window.setTimeout(() => { const el = document.getElementById(`L${line}`); el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); (el?.querySelector('button.num') as HTMLButtonElement | null)?.click(); }, 120);
+        }} />
+      )}
       {big && (
         <CodeFull name={curFile.name} lang={curFile.lang} index={fi} total={shownFiles.length} wrap={wrap} onWrap={toggleWrap}
           onFile={setFileIdx} onClose={closeBig}>

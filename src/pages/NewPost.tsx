@@ -14,6 +14,9 @@ import { filesOf, type Post, type PostKind, type Thread } from '../lib/types';
 import { lineMapper } from '../lib/diff';
 import { LangIcon } from '../components/LangIcon';
 import { Picker } from '../components/Picker';
+import { Runner } from '../components/Runner';
+import { Icon } from '../components/Icon';
+import { runKind } from '../lib/runner';
 
 const DRAFT_KEY = 'codeview:draft';
 const NEW_TASK = '__new_task__';
@@ -51,6 +54,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
   const [title, setTitle] = useState(d?.title ?? '');
   const [task, setTask] = useState(d?.task && team.tasks.includes(d.task) ? d.task : edit ? edit.post.task : team.tasks[0] ?? '자유 질문');
   const [ask, setAsk] = useState(d?.ask ?? '');
+  const [running, setRunning] = useState(false);
   const [kind, setKind] = useState<PostKind>(d?.kind === 'share' ? 'share' : 'review');
   const [files, setFiles] = useState<DraftFile[]>(() => draftFiles(d));
   const [active, setActive] = useState(0);
@@ -187,6 +191,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
 
   const allEmpty = !edit && files.every((f) => !f.code.trim());
 
+  const runFiles = files.map((f) => ({ name: f.name.trim() || sampleOf(f.lang), lang: f.lang, code: f.code }));
   return (
     <section>
       {edit ? <BackBar label="취소" to={href({ name: 'post', id: edit.post.id })} /> : <BackBar label="닫기" />}
@@ -254,7 +259,10 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
             {cur.langAuto && cur.code.trim() && <span className="muted small">자동 감지</span>}</div>
         </div>
         <div className="field">
-          <label htmlFor="nCode">코드</label>
+          <div className="code-lbl">
+            <label htmlFor="nCode">코드</label>
+            {runKind(runFiles) && <button type="button" className="btn sm run-pre" onClick={() => setRunning(true)}><Icon name="play" />실행해 보기</button>}
+          </div>
           <div className="paste">
             <CodeEditor key={cur.id} id="nCode" value={cur.code} lang={cur.lang} problems={problems} placeholder="코드 붙여넣기 (Ctrl/⌘ + V)" onToast={toast}
               fileName={cur.name} onTemplate={(f, l, c) => patchFile({ name: cur.name.trim() ? cur.name : f, lang: l, code: c, langAuto: false })}
@@ -286,6 +294,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
       <div className="dock"><div className="dock-in">
         <button className="btn primary wide" form="newPostForm" disabled={busy}>{busy ? <>{edit ? '저장하는 중' : '올리는 중'}<Dots /></> : edit ? '고친 내용 저장' : `${share ? '공유하기' : picked.length ? `${picked.length}명에게 리뷰 요청` : '올리기'}${files.length > 1 ? ` · 파일 ${files.length}개` : ''}`}</button>
       </div></div>
+      {running && <Runner title={title.trim() || '미리보기'} files={runFiles} onClose={() => setRunning(false)} onGoto={(file) => { setRunning(false); setActive(file); }} />}
     </section>
   );
 }

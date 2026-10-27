@@ -781,3 +781,44 @@ body[data-page="form"] .bell { background: var(--fill); }
 .nb-body b { font-size: 14px; }
 .nb-body span { font-size: 12.5px; color: #c5ccd4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nb-go { flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: 700 13.5px var(--font); cursor: pointer; }
+
+/* 코드 실행기 */
+.code-tools .run-btn { flex: 0 0 auto; background: #12a26e; color: #fff; }
+.code-tools .run-btn:hover { background: #0f8f61; }
+.code-tools .run-btn .ic { width: 14px; height: 14px; }
+.run { position: fixed; inset: 0; z-index: 36; display: flex; flex-direction: column; background: #1f1f1f; color: #e3e8ee; animation: cv-fade .16s ease-out both; --ed-bg: #1f1f1f; --ed-bar: #181818; --ed-line: #2b2b2b; --ed-ln: #6e7681; }
+.run-bar { flex: none; display: flex; align-items: center; gap: 6px; min-height: 56px; padding: env(safe-area-inset-top) 8px 0 14px; background: #181818; border-bottom: 1px solid #2b2b2b; }
+.run-dot { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: #3a3e46; color: #0f1012; font: 800 14px var(--font); }
+.run-dot.ok { background: #3fb950; } .run-dot.bad { background: #f14c4c; }
+.run-dot .ic { width: 12px; height: 12px; }
+.run-t { flex: 1; min-width: 0; display: grid; }
+.run-t b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-t small { font-size: 11.5px; color: #8b95a1; }
+.run-opts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: #181818; }
+.run-seg { flex: 1 1 220px; max-width: 320px; --track: #26282d; --seg-on: #3a3e46; }
+.run-seg button { padding: 6px 4px; font-size: 12.5px; color: #8b95a1; }
+.run-seg button[aria-pressed="true"] { color: #fff; }
+.run-opts .pk-mini .pk-btn { height: 30px; background: #26282d; color: #cfd5dc; }
+.run-opts .pk-mini .pk-btn:hover, .run-opts .pk-mini .pk-btn[aria-expanded="true"] { background: #3a3e46; }
+.run-stage { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; padding: 10px; background: #2a2d31; overflow: auto; }
+.run-frame { flex: none; width: 100%; height: 100%; min-height: 360px; border: 0; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px #3a3d42; }
+.run-none, .run-fail { margin: auto; color: #cfd5dc; font-size: 14px; text-align: center; }
+.run-fail { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(320px, 90%); padding: 14px 16px; border-radius: 12px; background: #181818; line-height: 1.6; }
+.run-console { flex: none; background: #181818; border-top: 1px solid #2b2b2b; }
+.run-ch { display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 14px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.run-ch b { font-size: 13px; } .run-ch .muted { font-size: 12px; color: #8b95a1; }
+.run-ch .ic { width: 14px; height: 14px; color: #8b95a1; }
+.run-err { font-size: 12px; font-weight: 700; color: #f14c4c; } .run-ok { font-size: 12px; color: #3fb950; }
+.run-logs { max-height: min(34vh, 260px); overflow: auto; padding-bottom: calc(8px + env(safe-area-inset-bottom)); font: 12px/1.65 var(--mono); }
+.run-empty { padding: 4px 14px 10px; font-family: var(--font); }
+.run-log { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; padding: 5px 14px; border-top: 1px solid #222; }
+.run-log.warn { background: rgba(204, 167, 0, .08); } .run-log.error { background: rgba(241, 76, 76, .1); }
+.run-k { color: #4daafc; } .run-log.warn .run-k { color: #cca700; } .run-log.error .run-k { color: #f14c4c; } .run-log.info .run-k { color: #8b95a1; font-family: var(--font); }
+.run-x { display: grid; gap: 4px; min-width: 0; }
+.run-text { color: #cccccc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.run-log.error .run-text { color: #ffd7d7; } .run-log.info .run-text { font-family: var(--font); color: #b0b8c1; }
+.run-at { justify-self: start; border: 0; border-radius: 7px; background: #2f3237; color: #4daafc; padding: 3px 9px; font: 600 12px var(--font); cursor: pointer; }
+.run-hint { font: 12.5px/1.55 var(--font); color: #cfd5dc; }
+.code-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.run-pre { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; background: #12a26e; color: #fff; font-size: 13px; }
+.run-pre .ic { width: 12px; height: 12px; }
