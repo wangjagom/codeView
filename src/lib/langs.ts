@@ -21,6 +21,7 @@ export const LANGS: Lang[] = [
   { id: 'HTML', label: 'HTML', course: 'UI 프로그래밍', fence: 'html', exts: ['.html', '.htm'], sample: 'index.html' },
   { id: 'CSS', label: 'CSS', course: 'UI 프로그래밍', fence: 'css', exts: ['.css'], sample: 'style.css' },
   { id: 'JSON', label: 'JSON (manifest)', course: 'Fiori', fence: 'json', exts: ['.json'], sample: 'manifest.json' },
+  { id: 'Properties', label: 'i18n (properties)', course: 'Fiori', fence: 'properties', exts: ['.properties'], sample: 'i18n.properties' },
 ];
 
 const BY_ID = new Map(LANGS.map((l) => [l.id, l]));

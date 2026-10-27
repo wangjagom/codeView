@@ -19,11 +19,50 @@ describe('buildUi5 (UI5 기본 앱 세트)', () => {
     expect(b.boot).toEqual({ mode: 'component' });
     for (const k of ['zproject1/manifest.json', 'zproject1/Component.js', 'zproject1/view/App.view.xml', 'zproject1/view/View1.view.xml', 'zproject1/controller/App.controller.js', 'zproject1/controller/View1.controller.js', 'zproject1/model/models.js']) expect(b.modules[k], k).toBeTruthy();
   });
-  it('없는 i18n은 빈 묶음으로 채우고 외부 CSS 연결은 빼요', () => {
-    expect(b.modules['zproject1/i18n/i18n.properties']).toBe('');
-    expect(b.notes.join()).toContain('i18n');
+  it('올린 i18n을 쓰고 외부 CSS 연결은 빼요', () => {
+    expect(b.modules['zproject1/i18n/i18n.properties']).toContain('appTitle=');
+    expect(b.modules['zproject1/i18n/i18n_ko.properties']).toContain('appTitle=');
+    expect(b.notes).toEqual([]);
     expect(JSON.parse(b.modules['zproject1/manifest.json'])['sap.ui5'].resources.css).toBeUndefined();
     expect(b.css.length).toBe(1);
+  });
+  it('i18n이 없으면 빈 묶음으로 채워요', () => {
+    const nb = buildUi5(files.filter((f) => !f.name.endsWith('.properties')));
+    expect(nb.modules['zproject1/i18n/i18n.properties']).toBe('');
+    expect(nb.notes.join()).toContain('i18n');
+  });
+});
+
+describe('UI5 파일 세트', () => {
+  it('View + Controller: View 하나로 시작하고 빠진 파일이 없어요', () => {
+    const b = buildUi5(templateSetFiles('ui5-vc'));
+    expect(b.boot).toEqual({ mode: 'view', viewName: 'zproject1.view.Main', wrap: true });
+    expect(b.modules['zproject1/controller/Main.controller.js']).toContain('onAdd');
+    expect(b.notes).toEqual([]);
+  });
+  it('View + Controller + 데이터: data.json을 기본 모델로 꽂아요', () => {
+    const b = buildUi5(templateSetFiles('ui5-data'));
+    expect(b.models[0].name).toBe('');
+    expect((b.models[0].data as { products: unknown[] }).products.length).toBeGreaterThan(3);
+  });
+  it('View + Fragment: Fragment를 view 자리에서 찾을 수 있어요', () => {
+    const b = buildUi5(templateSetFiles('ui5-fragment'));
+    expect(b.modules['zproject1/view/NameDialog.fragment.xml']).toContain('nameDialog');
+    expect(b.notes).toEqual([]);
+  });
+  it('목록 → 상세: manifest의 JSON 데이터 소스를 올린 data.json으로 바꿔요', () => {
+    const files = templateSetFiles('ui5-nav');
+    expect(runKind(files)).toBe('ui5');
+    const b = buildUi5(files);
+    expect(b.boot).toEqual({ mode: 'component' });
+    for (const k of ['zproject1/view/App.view.xml', 'zproject1/view/List.view.xml', 'zproject1/view/Detail.view.xml', 'zproject1/controller/List.controller.js', 'zproject1/controller/Detail.controller.js']) expect(b.modules[k], k).toBeTruthy();
+    expect(JSON.parse(b.modules['zproject1/manifest.json'])['sap.ui5'].models['']).toBeUndefined();
+    expect(b.models.map((m) => m.name)).toEqual(['']);
+    expect(b.modules['zproject1/i18n/i18n.properties']).toContain('listTitle=');
+    expect(b.notes).toEqual([]);
+  });
+  it('세트 파일은 10개를 넘지 않아요', () => {
+    for (const id of ['ui5-vc', 'ui5-data', 'ui5-fragment', 'ui5-nav', 'ui5-app']) expect(templateSetFiles(id).length).toBeLessThanOrEqual(10);
   });
 });
 

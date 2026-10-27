@@ -160,6 +160,13 @@ export function buildUi5(files: RunFile[]): Ui5Build {
         notes.push('미리보기에서는 SAP 서버(OData)에 연결할 수 없어요 · data.json 같은 예시 데이터를 올리면 그걸로 보여 줘요');
       }
     }
+    // JSONModel이 부르는 파일(model/data.json 등)은 미리보기에서 주소로 못 받으니 올린 파일 내용을 바로 넣어요.
+    for (const [name, def] of Object.entries<any>(ui5?.models ?? {})) {
+      if (!/JSONModel$/.test(def?.type ?? '') && !(def?.dataSource && /^JSON$/i.test(ds[def.dataSource]?.type ?? ''))) continue;
+      const uri = def.uri ?? ds[def.dataSource]?.uri;
+      const hit = typeof uri === 'string' && dataFiles.find((d) => d.name.toLowerCase() === base(uri).toLowerCase());
+      if (hit) { delete ui5.models[name]; models.push({ name, data: hit.data }); }
+    }
     if (ui5?.resources?.css) delete ui5.resources.css;
     if (m['sap.app']?.resources) delete m['sap.app'].resources;
     modules[`${nsPath}/manifest.json`] = JSON.stringify(m);

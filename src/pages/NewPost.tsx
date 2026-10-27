@@ -245,8 +245,13 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
             {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
           </div>
           {allEmpty && (
-            <div className="set-row"><span className="muted small">여러 파일 한 번에:</span>
-              {TEMPLATE_SETS.map((s) => <button key={s.id} type="button" className="chip sm" title={s.detail} onClick={() => applySet(s.id)}>{s.label}</button>)}
+            <div className="sets">
+              <p className="muted small">파일 세트로 시작하기 · 필요한 파일을 한 번에 넣어요</p>
+              {(['UI5', 'ABAP'] as const).map((g) => (
+                <div key={g} className="set-grp"><span className="set-g">{g}</span>
+                  <span className="set-row">{TEMPLATE_SETS.filter((s) => s.group === g).map((s) => <button key={s.id} type="button" className="chip sm" title={`${s.detail} · 파일 ${s.ids.length}개`} onClick={() => applySet(s.id)}>{s.label}</button>)}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

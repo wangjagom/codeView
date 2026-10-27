@@ -74,6 +74,9 @@ const GRAMMARS: Record<string, Grammar> = {
     parts: [['c', '\\/\\*.*?\\*\\/'], ['s', `${STR_DQ}|${STR_SQ}`], ['at', '[\\w-]+(?=\\s*:)'], ['n', '#[0-9a-fA-F]{3,8}\\b|\\b\\d+(?:\\.\\d+)?(?:px|rem|em|%|vh|vw|s|ms)?\\b'], ['ty', '[.#][\\w-]+'], ['word', '@?[\\w-]+']],
     keywords: CSS_KW,
   },
+  Properties: {
+    parts: [['c', '^\\s*[#!].*$'], ['at', '^\\s*[\\w.-]+(?=\\s*[=:])']],
+  },
   JSON: {
     parts: [['at', `${STR_DQ}(?=\\s*:)`], ['s', STR_DQ], ['n', '-?\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b'], ['k', '\\b(?:true|false|null)\\b']],
   },

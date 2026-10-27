@@ -15,6 +15,8 @@ export interface Template {
   /** 파일 이름이 없을 때 쓸 이름 */
   name: string;
   body: string;
+  /** 세트에서만 쓰는 파일 (칩·자동완성 목록에는 안 보여요) */
+  set?: boolean;
 }
 
 const NS = 'zproject1';
@@ -341,6 +343,436 @@ $0`,
 `,
   },
 
+  {
+    id: 'ui5-i18n', lang: 'Properties', label: 'i18n/i18n.properties', from: BAS, file: 'i18n.properties', name: 'i18n',
+    body: `# This is the resource bundle for %NS%
+
+#Texts for manifest.json
+
+#XTIT: Application name
+appTitle=App Title
+
+#YDES: Application description
+appDescription=An SAP Fiori application.
+#XTIT: Main view title
+title=App Title$0
+`,
+  },
+
+  /* ───────── SAPUI5 세트 (여러 파일을 한 번에) ─────────
+   * 세트에서만 쓰는 파일이에요. 칩·자동완성 목록에는 안 보여요(set: true). */
+  {
+    id: 'set-vc-view', lang: 'XML', label: 'Main.view.xml', from: 'UI5 세트', file: 'Main.view.xml', name: 'Main', set: true,
+    body: `<mvc:View controllerName="%NS%.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <Page id="page" title="할 일">
+        <content>
+            <HBox class="sapUiSmallMargin" alignItems="Center">
+                <Input id="todoInput" placeholder="할 일을 입력하세요" value="{/newTodo}" submit=".onAdd" width="14rem" />
+                <Button text="추가" type="Emphasized" press=".onAdd" class="sapUiTinyMarginBegin" />
+            </HBox>
+            <List id="todoList" items="{/todos}" mode="Delete" delete=".onDelete"
+                noDataText="할 일이 없어요" headerText="{= \${/todos}.length + '개'}">
+                <StandardListItem title="{title}" />
+            </List>
+        </content>
+    </Page>
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-vc-controller', lang: 'JavaScript', label: 'Main.controller.js', from: 'UI5 세트', file: 'Main.controller.js', name: 'Main', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/mvc/Controller",
+    "sap/ui/model/json/JSONModel",
+    "sap/m/MessageToast"
+],
+function (Controller, JSONModel, MessageToast) {
+    "use strict";
+
+    return Controller.extend("%NS%.controller.Main", {
+        onInit: function () {
+            var oModel = new JSONModel({
+                newTodo: "",
+                todos: [
+                    { title: "UI5 기본 컨트롤 익히기" },
+                    { title: "데이터 바인딩 연습" }
+                ]
+            });
+            this.getView().setModel(oModel);
+        },
+
+        onAdd: function () {
+            var oModel = this.getView().getModel();
+            var sTitle = oModel.getProperty("/newTodo").trim();
+            if (!sTitle) {
+                MessageToast.show("할 일을 입력해 주세요");
+                return;
+            }
+            // 새 배열로 바꿔 넣어야 개수 표시도 함께 바뀌어요.
+            oModel.setProperty("/todos", oModel.getProperty("/todos").concat([{ title: sTitle }]));
+            oModel.setProperty("/newTodo", "");
+            console.log("추가:", sTitle);
+        },
+
+        onDelete: function (oEvent) {
+            var oItem = oEvent.getParameter("listItem");
+            var iIndex = Number(oItem.getBindingContext().getPath().split("/").pop());
+            var oModel = this.getView().getModel();
+            oModel.setProperty("/todos", oModel.getProperty("/todos").filter(function (o, i) {
+                return i !== iIndex;
+            }));
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-data-view', lang: 'XML', label: 'Main.view.xml', from: 'UI5 세트', file: 'Main.view.xml', name: 'Main', set: true,
+    body: `<mvc:View controllerName="%NS%.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <Page id="page" title="상품 목록">
+        <content>
+            <Table id="productTable" items="{/products}" growing="true" growingThreshold="10">
+                <headerToolbar>
+                    <OverflowToolbar>
+                        <Title text="상품" level="H2" />
+                        <ToolbarSpacer />
+                        <SearchField width="12rem" search=".onSearch" liveChange=".onSearch" />
+                    </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                    <Column><Text text="이름" /></Column>
+                    <Column minScreenWidth="Tablet" demandPopin="true"><Text text="분류" /></Column>
+                    <Column hAlign="End"><Text text="가격" /></Column>
+                </columns>
+                <items>
+                    <ColumnListItem type="Navigation" press=".onPress">
+                        <cells>
+                            <ObjectIdentifier title="{name}" text="{id}" />
+                            <Text text="{category}" />
+                            <ObjectNumber number="{price}" unit="KRW"
+                                state="{= \${price} > 100000 ? 'Error' : 'Success'}" />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
+    </Page>
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-data-controller', lang: 'JavaScript', label: 'Main.controller.js', from: 'UI5 세트', file: 'Main.controller.js', name: 'Main', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/mvc/Controller",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
+    "sap/m/MessageToast"
+],
+function (Controller, Filter, FilterOperator, MessageToast) {
+    "use strict";
+
+    return Controller.extend("%NS%.controller.Main", {
+        onInit: function () {
+            // data.json이 이 화면의 기본 모델로 연결돼요.
+        },
+
+        onSearch: function (oEvent) {
+            var sQuery = oEvent.getParameter("newValue") || oEvent.getParameter("query") || "";
+            var aFilters = sQuery ? [new Filter("name", FilterOperator.Contains, sQuery)] : [];
+            this.byId("productTable").getBinding("items").filter(aFilters);
+        },
+
+        onPress: function (oEvent) {
+            var oProduct = oEvent.getSource().getBindingContext().getObject();
+            MessageToast.show(oProduct.name + " 선택");
+            console.log(oProduct);
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-data-json', lang: 'JSON', label: 'data.json', from: 'UI5 세트', file: 'data.json', name: 'data', set: true,
+    body: `{
+  "products": [
+    { "id": "P-1001", "name": "노트북", "category": "전자기기", "price": 1290000 },
+    { "id": "P-1002", "name": "무선 마우스", "category": "전자기기", "price": 35000 },
+    { "id": "P-1003", "name": "모니터 27인치", "category": "전자기기", "price": 320000 },
+    { "id": "P-2001", "name": "책상", "category": "가구", "price": 189000 },
+    { "id": "P-2002", "name": "의자", "category": "가구", "price": 99000 },
+    { "id": "P-3001", "name": "볼펜 세트", "category": "문구", "price": 8000 }
+  ]
+}
+`,
+  },
+  {
+    id: 'set-frag-view', lang: 'XML', label: 'Main.view.xml', from: 'UI5 세트', file: 'Main.view.xml', name: 'Main', set: true,
+    body: `<mvc:View controllerName="%NS%.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <Page id="page" title="다이얼로그">
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Text text="{= \${/name} ? '안녕하세요, ' + \${/name} + '님' : '이름을 입력해 보세요'}" class="sapUiSmallMarginBottom" />
+                <Button text="이름 입력" icon="sap-icon://edit" press=".onOpenDialog" />
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-frag-controller', lang: 'JavaScript', label: 'Main.controller.js', from: 'UI5 세트', file: 'Main.controller.js', name: 'Main', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/mvc/Controller",
+    "sap/ui/model/json/JSONModel"
+],
+function (Controller, JSONModel) {
+    "use strict";
+
+    return Controller.extend("%NS%.controller.Main", {
+        onInit: function () {
+            this.getView().setModel(new JSONModel({ name: "", draft: "" }));
+        },
+
+        onOpenDialog: function () {
+            // Fragment는 처음 한 번만 불러오고 다음부터는 다시 써요.
+            if (!this._pDialog) {
+                this._pDialog = this.loadFragment({ name: "%NS%.view.NameDialog" });
+            }
+            this._pDialog.then(function (oDialog) {
+                oDialog.open();
+            });
+        },
+
+        onSave: function () {
+            var oModel = this.getView().getModel();
+            oModel.setProperty("/name", oModel.getProperty("/draft"));
+            this.byId("nameDialog").close();
+        },
+
+        onCloseDialog: function () {
+            this.byId("nameDialog").close();
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-frag-fragment', lang: 'XML', label: 'NameDialog.fragment.xml', from: 'UI5 세트', file: 'NameDialog.fragment.xml', name: 'NameDialog', set: true,
+    body: `<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    <Dialog id="nameDialog" title="이름 입력">
+        <content>
+            <Input value="{/draft}" placeholder="이름" class="sapUiSmallMargin" width="auto" />
+        </content>
+        <beginButton>
+            <Button text="저장" type="Emphasized" press=".onSave" />
+        </beginButton>
+        <endButton>
+            <Button text="취소" press=".onCloseDialog" />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>
+`,
+  },
+  {
+    id: 'set-nav-manifest', lang: 'JSON', label: 'manifest.json', from: 'UI5 세트', file: 'manifest.json', name: 'manifest', set: true,
+    body: `{
+  "_version": "1.59.0",
+  "sap.app": {
+    "id": "%NS%",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": { "version": "0.0.1" },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "dataSources": {
+      "mainData": { "uri": "model/data.json", "type": "JSON" }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": { "desktop": true, "tablet": true, "phone": true }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.2",
+      "libs": { "sap.m": {}, "sap.ui.core": {} }
+    },
+    "contentDensities": { "compact": true, "cozy": true },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": { "bundleName": "%NS%.i18n.i18n" }
+      },
+      "": {
+        "type": "sap.ui.model.json.JSONModel",
+        "dataSource": "mainData"
+      }
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "viewType": "XML",
+        "async": true,
+        "viewPath": "%NS%.view",
+        "controlAggregation": "pages",
+        "controlId": "app",
+        "transition": "slide"
+      },
+      "routes": [
+        { "name": "list", "pattern": "", "target": "list" },
+        { "name": "detail", "pattern": "detail/{index}", "target": "detail" }
+      ],
+      "targets": {
+        "list": { "viewId": "list", "viewName": "List", "viewLevel": 1 },
+        "detail": { "viewId": "detail", "viewName": "Detail", "viewLevel": 2 }
+      }
+    },
+    "rootView": {
+      "viewName": "%NS%.view.App",
+      "type": "XML",
+      "async": true,
+      "id": "App"
+    }
+  }
+}
+`,
+  },
+  {
+    id: 'set-nav-component', lang: 'JavaScript', label: 'Component.js', from: 'UI5 세트', file: 'Component.js', name: 'Component', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/UIComponent"
+],
+function (UIComponent) {
+    "use strict";
+
+    return UIComponent.extend("%NS%.Component", {
+        metadata: {
+            manifest: "json"
+        },
+
+        init: function () {
+            UIComponent.prototype.init.apply(this, arguments);
+            this.getRouter().initialize();
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-nav-app-view', lang: 'XML', label: 'App.view.xml', from: 'UI5 세트', file: 'App.view.xml', name: 'App', set: true,
+    body: `<mvc:View
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <App id="app" />
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-nav-list-view', lang: 'XML', label: 'List.view.xml', from: 'UI5 세트', file: 'List.view.xml', name: 'List', set: true,
+    body: `<mvc:View controllerName="%NS%.controller.List"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <Page id="listPage" title="{i18n>listTitle}">
+        <content>
+            <List items="{/products}">
+                <ObjectListItem title="{name}" number="{price}" numberUnit="KRW"
+                    type="Navigation" press=".onPress">
+                    <attributes>
+                        <ObjectAttribute text="{category}" />
+                    </attributes>
+                </ObjectListItem>
+            </List>
+        </content>
+    </Page>
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-nav-list-controller', lang: 'JavaScript', label: 'List.controller.js', from: 'UI5 세트', file: 'List.controller.js', name: 'List', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/mvc/Controller"
+],
+function (Controller) {
+    "use strict";
+
+    return Controller.extend("%NS%.controller.List", {
+        onPress: function (oEvent) {
+            // "/products/2" → 2
+            var sPath = oEvent.getSource().getBindingContext().getPath();
+            this.getOwnerComponent().getRouter().navTo("detail", {
+                index: sPath.split("/").pop()
+            });
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-nav-detail-view', lang: 'XML', label: 'Detail.view.xml', from: 'UI5 세트', file: 'Detail.view.xml', name: 'Detail', set: true,
+    body: `<mvc:View controllerName="%NS%.controller.Detail"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m">
+    <Page id="detailPage" title="{i18n>detailTitle}" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <ObjectHeader title="{name}" number="{price}" numberUnit="KRW">
+                <attributes>
+                    <ObjectAttribute title="상품 번호" text="{id}" />
+                    <ObjectAttribute title="분류" text="{category}" />
+                </attributes>
+            </ObjectHeader>
+        </content>
+    </Page>
+</mvc:View>
+`,
+  },
+  {
+    id: 'set-nav-detail-controller', lang: 'JavaScript', label: 'Detail.controller.js', from: 'UI5 세트', file: 'Detail.controller.js', name: 'Detail', set: true,
+    body: `sap.ui.define([
+    "sap/ui/core/mvc/Controller",
+    "sap/ui/core/routing/History"
+],
+function (Controller, History) {
+    "use strict";
+
+    return Controller.extend("%NS%.controller.Detail", {
+        onInit: function () {
+            this.getOwnerComponent().getRouter().getRoute("detail")
+                .attachPatternMatched(this._onMatched, this);
+        },
+
+        _onMatched: function (oEvent) {
+            var sIndex = oEvent.getParameter("arguments").index;
+            this.getView().bindElement("/products/" + sIndex);
+        },
+
+        onNavBack: function () {
+            if (History.getInstance().getPreviousHash() !== undefined) {
+                window.history.go(-1);
+            } else {
+                this.getOwnerComponent().getRouter().navTo("list", {}, true);
+            }
+        }
+    });
+});
+`,
+  },
+  {
+    id: 'set-nav-i18n', lang: 'Properties', label: 'i18n.properties', from: 'UI5 세트', file: 'i18n.properties', name: 'i18n', set: true,
+    body: `appTitle=상품 둘러보기
+appDescription=목록에서 고르면 상세 화면으로 가요
+listTitle=상품 목록
+detailTitle=상품 상세
+`,
+  },
+
   /* ───────── ABAP (ADT) ───────── */
   {
     id: 'abap-report', lang: 'ABAP', label: 'REPORT (새 프로그램)', from: ADT, file: '%NAME%.prog.abap', name: 'zr_program',
@@ -519,7 +951,7 @@ ENDCLASS.
   },
 ];
 
-export const templatesFor = (lang: string) => TEMPLATES.filter((t) => t.lang === lang);
+export const templatesFor = (lang: string) => TEMPLATES.filter((t) => t.lang === lang && !t.set);
 
 /** 파일 이름에서 객체 이름을 꺼내요. 템플릿과 맞는 파일 이름이 아니면 기본 이름을 써요. */
 export function templateName(t: Template, file: string): string {
@@ -537,9 +969,14 @@ export function fillTemplate(t: Template, file = ''): { body: string; file: stri
 }
 
 /** 여러 파일을 한 번에 넣는 기본 세트 (한 글에 여러 파일) */
-export const TEMPLATE_SETS: { id: string; label: string; detail: string; ids: string[] }[] = [
-  { id: 'ui5-app', label: 'UI5 기본 앱', detail: 'BAS 생성기 파일 9개', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-css'] },
-  { id: 'rap', label: 'RAP 기본 (CDS)', detail: 'Root·Projection·Metadata·Service', ids: ['cds-root-view-entity', 'cds-projection', 'cds-metadata-ext', 'cds-service'] },
+export interface TemplateSet { id: string; label: string; detail: string; group: 'UI5' | 'ABAP'; ids: string[] }
+export const TEMPLATE_SETS: TemplateSet[] = [
+  { id: 'ui5-vc', group: 'UI5', label: 'View + Controller', detail: '화면 하나와 동작 · 입력해서 목록에 추가', ids: ['set-vc-view', 'set-vc-controller'] },
+  { id: 'ui5-data', group: 'UI5', label: 'View + Controller + 데이터', detail: 'data.json을 Table에 바인딩 · 검색 필터', ids: ['set-data-view', 'set-data-controller', 'set-data-json'] },
+  { id: 'ui5-fragment', group: 'UI5', label: 'View + Fragment', detail: '버튼을 누르면 Dialog Fragment를 열어요', ids: ['set-frag-view', 'set-frag-controller', 'set-frag-fragment'] },
+  { id: 'ui5-nav', group: 'UI5', label: '목록 → 상세 (라우팅)', detail: 'manifest 라우팅 · List·Detail View 9개 파일', ids: ['set-nav-manifest', 'set-nav-component', 'set-nav-app-view', 'set-nav-list-view', 'set-nav-list-controller', 'set-nav-detail-view', 'set-nav-detail-controller', 'set-data-json', 'set-nav-i18n'] },
+  { id: 'ui5-app', group: 'UI5', label: 'UI5 기본 앱 (BAS)', detail: 'BAS 생성기가 만드는 파일 10개', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-i18n', 'ui5-css'] },
+  { id: 'rap', group: 'ABAP', label: 'RAP 기본 (CDS)', detail: 'Root·Projection·Metadata·Service', ids: ['cds-root-view-entity', 'cds-projection', 'cds-metadata-ext', 'cds-service'] },
 ];
 
 /** 세트의 파일들 (커서 표시 $0은 빼요) */
