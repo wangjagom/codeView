@@ -832,3 +832,46 @@ body[data-page="form"] .bell { background: var(--fill); }
 .code-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .run-pre { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; background: #12a26e; color: #fff; font-size: 13px; }
 .run-pre .ic { width: 12px; height: 12px; }
+
+/* 폴더 트리 (VS Code 탐색기처럼). 파일 이름에 / 가 있으면 탭 대신 보여요. */
+.ft-crumb { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); font: 500 13px var(--mono); text-align: left; cursor: pointer; }
+.ft-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ft-path b { font-weight: 600; }
+.ft-dirs { color: var(--faint); }
+.ft-sum { flex: none; font: 500 12px var(--font); color: var(--faint); }
+.ft-caret { width: 16px; height: 16px; flex: none; color: var(--disabled); transition: transform .2s ease; }
+.ft-caret.open { transform: rotate(180deg); }
+.ft.drop .ft-list { margin-top: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 6px 20px rgba(0, 0, 0, .06); }
+.ft-list { display: grid; gap: 1px; }
+.ft-row { display: flex; align-items: center; min-width: 0; border-radius: 8px; color: var(--fg); }
+.ft-row.folder { color: var(--sub); }
+.ft-row.on { background: var(--accent-soft); color: var(--accent); }
+.ft-row:not(.on):hover { background: var(--fill); }
+.ft-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 8px 0 calc(6px + var(--d, 0) * 16px); border: 0; background: none; color: inherit; font: 500 13px var(--mono); text-align: left; cursor: pointer; }
+.ft-row.file .ft-btn { padding-left: calc(26px + var(--d, 0) * 16px); }
+.ft-row.folder .ft-btn { font-weight: 600; }
+.ft-row.on .ft-btn { font-weight: 600; }
+.ft-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ft-chev { width: 14px; height: 14px; flex: none; color: var(--faint); transition: transform .15s ease; }
+.ft-chev.open { transform: rotate(90deg); }
+.ft-folder { width: 16px; height: 16px; flex: none; color: var(--faint); }
+.ft-count { font: 500 11px var(--font); color: var(--faint); }
+.ft-row .ftab-x { height: 36px; color: var(--faint); white-space: nowrap; }
+.ft-row .ftab-x:not(:hover) { opacity: .8; }
+.ft-actions { display: flex; gap: 6px; margin-top: 8px; }
+.code-main { min-width: 0; }
+.code-main > .ft.drop { padding: 12px 16px 2px; }
+.ft.side { padding: 12px 8px; border-right: 1px solid var(--line); background: var(--code-bg); min-width: 0; }
+.ft-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 8px; font: 700 11px var(--font); letter-spacing: .06em; color: var(--faint); }
+.ft-collapse { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: none; color: var(--faint); cursor: pointer; }
+.ft-collapse:hover { background: var(--fill); color: var(--fg); }
+.ft-collapse .ic { width: 16px; height: 16px; }
+.ft.side .ft-btn { height: 32px; }
+.only-wide { display: none; }
+/* 넓은 화면: 코드 카드만 넓혀서 왼쪽에 탐색기를 늘 펼쳐 둬요. */
+@media (min-width: 1000px) {
+  .code.has-tree { display: grid; grid-template-columns: 268px minmax(0, 1fr); align-items: start; width: min(1120px, calc(100vw - 64px)); margin-left: calc(50% - min(560px, 50vw - 32px)); }
+  .code.has-tree .ft.side { align-self: stretch; }
+  .only-wide { display: block; }
+  .only-narrow { display: none; }
+}

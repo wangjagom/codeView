@@ -934,13 +934,14 @@ export function fillTemplate(t: Template, file = ''): { body: string; file: stri
 }
 
 /** 여러 파일을 한 번에 넣는 기본 세트 (한 글에 여러 파일) */
+/** ids: 템플릿 id. 'view/…'처럼 앞에 폴더를 붙이면 그 폴더 안 파일이 돼요. */
 export interface TemplateSet { id: string; label: string; detail: string; group: 'UI5' | 'ABAP'; ids: string[] }
 export const TEMPLATE_SETS: TemplateSet[] = [
-  { id: 'ui5-vc', group: 'UI5', label: 'View + Controller', detail: '화면 하나와 동작 · 입력해서 목록에 추가', ids: ['set-vc-view', 'set-vc-controller'] },
-  { id: 'ui5-data', group: 'UI5', label: 'View + Controller + 데이터', detail: 'data.json을 Table에 바인딩 · 검색 필터', ids: ['set-data-view', 'set-data-controller', 'set-data-json'] },
-  { id: 'ui5-fragment', group: 'UI5', label: 'View + Fragment', detail: '버튼을 누르면 Dialog Fragment를 열어요', ids: ['set-frag-view', 'set-frag-controller', 'set-frag-fragment'] },
-  { id: 'ui5-nav', group: 'UI5', label: '목록 → 상세 (라우팅)', detail: 'manifest 라우팅 · List·Detail 화면 두 개', ids: ['set-nav-manifest', 'set-nav-app-view', 'set-nav-list-view', 'set-nav-list-controller', 'set-nav-detail-view', 'set-nav-detail-controller', 'set-data-json'] },
-  { id: 'ui5-app', group: 'UI5', label: 'BAS 전체 구조', detail: 'BAS 생성기가 만드는 앱 파일 전부 (manifest·Component·i18n 등)', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-i18n', 'ui5-css'] },
+  { id: 'ui5-vc', group: 'UI5', label: 'View + Controller', detail: '화면 하나와 동작 · 입력해서 목록에 추가', ids: ['view/set-vc-view', 'controller/set-vc-controller'] },
+  { id: 'ui5-data', group: 'UI5', label: 'View + Controller + 데이터', detail: 'data.json을 Table에 바인딩 · 검색 필터', ids: ['view/set-data-view', 'controller/set-data-controller', 'model/set-data-json'] },
+  { id: 'ui5-fragment', group: 'UI5', label: 'View + Fragment', detail: '버튼을 누르면 Dialog Fragment를 열어요', ids: ['view/set-frag-view', 'controller/set-frag-controller', 'view/set-frag-fragment'] },
+  { id: 'ui5-nav', group: 'UI5', label: '목록 → 상세 (라우팅)', detail: 'manifest 라우팅 · List·Detail 화면 두 개', ids: ['set-nav-manifest', 'view/set-nav-app-view', 'view/set-nav-list-view', 'controller/set-nav-list-controller', 'view/set-nav-detail-view', 'controller/set-nav-detail-controller', 'model/set-data-json'] },
+  { id: 'ui5-app', group: 'UI5', label: 'BAS 전체 구조', detail: 'BAS 생성기가 만드는 앱 파일 전부 (manifest·Component·i18n 등)', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'view/ui5-app-view', 'controller/ui5-app-controller', 'view/ui5-view', 'controller/ui5-controller', 'model/ui5-models', 'i18n/ui5-i18n', 'css/ui5-css'] },
   { id: 'rap', group: 'ABAP', label: 'RAP 기본 (CDS)', detail: 'Root·Projection·Metadata·Service', ids: ['cds-root-view-entity', 'cds-projection', 'cds-metadata-ext', 'cds-service'] },
 ];
 
@@ -948,8 +949,11 @@ export const TEMPLATE_SETS: TemplateSet[] = [
 export function templateSetFiles(setId: string): { name: string; lang: string; code: string }[] {
   const set = TEMPLATE_SETS.find((s) => s.id === setId);
   if (!set) return [];
-  return set.ids.map((id) => TEMPLATES.find((t) => t.id === id)!).map((t) => {
+  // 'view/set-vc-view'처럼 앞에 폴더를 붙이면 그 폴더 안에 넣어요 (BAS 프로젝트의 webapp 아래 구조).
+  return set.ids.map((entry) => {
+    const cut = entry.lastIndexOf('/');
+    const t = TEMPLATES.find((x) => x.id === entry.slice(cut + 1))!;
     const f = fillTemplate(t);
-    return { name: f.file, lang: t.lang, code: f.body.replace(/\$0/g, '') };
+    return { name: entry.slice(0, cut + 1) + f.file, lang: t.lang, code: f.body.replace(/\$0/g, '') };
   });
 }

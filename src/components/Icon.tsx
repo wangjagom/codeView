@@ -31,6 +31,8 @@ const PATHS: Record<string, React.ReactElement> = {
   trash: <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13" /></g>,
   comment: <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round"><path d="M5 5h14v10H10l-4 4v-4H5z" /><path d="M12 8v4M10 10h4" strokeLinecap="round" /></g>,
   send: <path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" />,
+  folder: <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+  collapse: <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 10l5-5 5 5M7 19l5-5 5 5" />,
   chev: <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />,
 };
 

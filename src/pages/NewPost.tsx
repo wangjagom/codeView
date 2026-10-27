@@ -10,6 +10,8 @@ import { useStore } from '../lib/store';
 import { Dots, Expand, useFlip } from '../components/Motion';
 import { TASK_NAME_MAX, normTask, similarTasks, taskProblem } from '../lib/tasks';
 import { TEMPLATE_SETS, templateSetFiles } from '../lib/templates';
+import { hasFolders } from '../lib/tree';
+import { FileTree } from '../components/FileTree';
 import { filesOf, type Post, type PostKind, type Thread } from '../lib/types';
 import { lineMapper } from '../lib/diff';
 import { LangIcon } from '../components/LangIcon';
@@ -199,6 +201,13 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
   };
 
   const allEmpty = !edit && files.every((f) => !f.code.trim());
+  const tree = hasFolders(files);
+  const removeBtn = (i: number) => {
+    const f = files[i];
+    if (files.length <= 1) return null;
+    const label = f.name.trim() || `파일 ${i + 1}`;
+    return <button type="button" className="ftab-x" data-remove={f.id} aria-label={confirmRemove === f.id ? `${label} 정말 빼기` : `${label} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? (reviewsIn(f) > 0 ? `리뷰 ${reviewsIn(f)}개도 빼기?` : '빼기?') : '×'}</button>;
+  };
 
   const runFiles = files.map((f) => ({ name: f.name.trim() || sampleOf(f.lang), lang: f.lang, code: f.code }));
   return (
@@ -237,23 +246,34 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
 
         <div className="field">
           <span className="lbl">파일 <span className="muted">({files.length}/{MAX_FILES})</span></span>
-          <div className="file-tabs" role="tablist" aria-label="파일" ref={tabsRef}>
-            {files.map((f, i) => {
-              const ps = allProblems[i] ?? [];
-              const pe = ps.filter((p) => p.sev === 'e').length;
-              return (
-                <span key={f.id} data-flip={f.id} className={`ftab ${i === active ? 'on' : ''} ${confirmRemove === f.id ? 'confirm' : ''}`}>
-                  <button type="button" role="tab" aria-selected={i === active} className="ftab-name" onClick={() => { setActive(i); setConfirmRemove(null); }}>
-                    <LangIcon lang={f.lang} size={16} />{f.name.trim() || `파일 ${i + 1}`}
-                    {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
-                  </button>
-                  {files.length > 1 && <button type="button" className="ftab-x" data-remove={f.id} aria-label={confirmRemove === f.id ? `${f.name || `파일 ${i + 1}`} 정말 빼기` : `${f.name || `파일 ${i + 1}`} 빼기`} onClick={() => removeFile(i)}>{confirmRemove === f.id ? (reviewsIn(f) > 0 ? `리뷰 ${reviewsIn(f)}개도 빼기?` : '빼기?') : '×'}</button>}
-                </span>
-              );
-            })}
-            {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
-            {!edit && !allEmpty && <button type="button" className={`ftab add set ${setsOpen ? 'on' : ''}`} aria-expanded={setsOpen} onClick={() => { setSetsOpen(!setsOpen); setPickSet(null); }}>세트</button>}
-          </div>
+          {tree ? (
+            <>
+              <FileTree variant="drop" files={files} active={active} onPick={(i) => { setActive(i); setConfirmRemove(null); }} extra={(i) => removeBtn(i)}
+                dot={(i) => { const ps = allProblems[i] ?? []; return ps.some((p) => p.sev === 'e') ? 'e' : ps.length ? 'w' : null; }} />
+              <div className="ft-actions">
+                {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
+                {!edit && !allEmpty && <button type="button" className={`ftab add set ${setsOpen ? 'on' : ''}`} aria-expanded={setsOpen} onClick={() => { setSetsOpen(!setsOpen); setPickSet(null); }}>세트</button>}
+              </div>
+            </>
+          ) : (
+            <div className="file-tabs" role="tablist" aria-label="파일" ref={tabsRef}>
+              {files.map((f, i) => {
+                const ps = allProblems[i] ?? [];
+                const pe = ps.filter((p) => p.sev === 'e').length;
+                return (
+                  <span key={f.id} data-flip={f.id} className={`ftab ${i === active ? 'on' : ''} ${confirmRemove === f.id ? 'confirm' : ''}`}>
+                    <button type="button" role="tab" aria-selected={i === active} className="ftab-name" onClick={() => { setActive(i); setConfirmRemove(null); }}>
+                      <LangIcon lang={f.lang} size={16} />{f.name.trim() || `파일 ${i + 1}`}
+                      {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
+                    </button>
+                    {removeBtn(i)}
+                  </span>
+                );
+              })}
+              {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
+              {!edit && !allEmpty && <button type="button" className={`ftab add set ${setsOpen ? 'on' : ''}`} aria-expanded={setsOpen} onClick={() => { setSetsOpen(!setsOpen); setPickSet(null); }}>세트</button>}
+            </div>
+          )}
           <Expand open={allEmpty || setsOpen}>
             <div className="sets">
               <p className="muted small">{allEmpty ? '파일 세트로 시작하기 · 필요한 파일을 한 번에 넣어요' : '파일 세트 · 필요한 파일을 한 번에 넣어요'}</p>
@@ -284,7 +304,7 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
         </div>
 
         <div className="two">
-          <div className="field"><label htmlFor="nFile">파일 이름</label><input id="nFile" value={cur.name} maxLength={80} placeholder={sampleOf(cur.lang)} onChange={(ev) => { const v = ev.target.value; const g = langFromFile(v); patchFile({ name: v, ...(g ? { lang: g, langAuto: false } : {}) }); }} /></div>
+          <div className="field"><label htmlFor="nFile">파일 이름 <span className="muted">· / 로 폴더를 나눠요</span></label><input id="nFile" value={cur.name} maxLength={80} placeholder={sampleOf(cur.lang)} onChange={(ev) => { const v = ev.target.value; const g = langFromFile(v); patchFile({ name: v, ...(g ? { lang: g, langAuto: false } : {}) }); }} /></div>
           <div className="field"><label htmlFor="nLang">언어</label>
             <Picker variant="field" id="nLang" label="언어" value={cur.lang} onChange={(v) => patchFile({ lang: v, langAuto: false })}
               options={LANGS.map((l) => ({ value: l.id, label: l.label, hint: l.course, icon: <LangIcon lang={l.id} size={20} /> }))} />

@@ -20,8 +20,10 @@ import { GeneralComments } from '../components/GeneralComments';
 import { takeFocus } from '../lib/focus';
 import { Runner } from '../components/Runner';
 import { runKind } from '../lib/runner';
+import { cleanPath, hasFolders, splitPath } from '../lib/tree';
 import { discordText, plainText, type ShareInput } from '../lib/share';
 import { download, makeZip, safeName } from '../lib/zip';
+import { FileTree } from '../components/FileTree';
 import { LangIcon } from '../components/LangIcon';
 
 export function PostDetail({ id }: { id: string }) {
@@ -127,7 +129,7 @@ export function PostDetail({ id }: { id: string }) {
   });
   const copyChat = async (text: string, where: string) =>
     toast((await copyText(text)) ? `${where}에 붙여 넣으면 돼요` : '복사가 막혀 있어요. 코드를 길게 눌러 직접 복사해 주세요');
-  const fileName = safeName(curFile.name, 'code.txt');
+  const fileName = safeName(splitPath(curFile.name).base, 'code.txt');
   const saveFile = () => download(fileName, shownCode, 'text/plain;charset=utf-8');
   const saveZip = () => {
     const readme = [
@@ -137,11 +139,33 @@ export function PostDetail({ id }: { id: string }) {
       '', '## 파일', '', ...shownFiles.map((f) => `- \`${f.name}\` (${langLabel(f.lang)})`),
       ...(post.ask ? ['', share ? '## 설명' : '## 요청 사항', '', post.ask] : []), '',
     ].join('\n');
-    const entries = shownFiles.map((f) => ({ name: safeName(f.name, 'code.txt'), text: f.code.endsWith('\n') ? f.code : `${f.code}\n` }));
+    // 폴더가 있는 파일은 zip 안에서도 같은 폴더에 넣어요.
+    const entries = shownFiles.map((f) => ({ name: cleanPath(f.name).split('/').filter(Boolean).map((p, j, a) => safeName(p, j === a.length - 1 ? 'code.txt' : 'folder')).join('/') || 'code.txt', text: f.code.endsWith('\n') ? f.code : `${f.code}\n` }));
     if (!entries.some((x) => x.name.toLowerCase() === 'readme.md')) entries.push({ name: 'README.md', text: readme });
     download(`${safeName(post.title, 'codeview')}.zip`, makeZip(entries), 'application/zip');
   };
 
+  const tree = hasFolders(shownFiles);
+  const reviewsOf = (i: number) => (readOnly ? 0 : lineThreads.filter((t) => (t.file ?? 0) === i).reduce((k, t) => k + t.comments.length, 0));
+  const dotOf = (i: number) => { const ps = allProblems[i] ?? []; return ps.some((p) => p.sev === 'e') ? 'e' as const : ps.length ? 'w' as const : null; };
+  const tabs = shownFiles.length > 1 && (
+            <div className="file-tabs view" role="tablist" aria-label={`파일 ${shownFiles.length}개`}>
+              {shownFiles.map((f, i) => {
+                const ps = allProblems[i] ?? [];
+                const pe = ps.filter((p) => p.sev === 'e').length;
+                const n = readOnly ? 0 : lineThreads.filter((t) => (t.file ?? 0) === i).reduce((k, t) => k + t.comments.length, 0);
+                return (
+                  <span key={f.name} className={`ftab ${i === fi ? 'on' : ''}`}>
+                    <button type="button" role="tab" aria-selected={i === fi} className="ftab-name" onClick={() => setFileIdx(i)}>
+                      <LangIcon lang={f.lang} size={16} />{f.name}
+                      {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
+                      {n > 0 && <span className="ftab-n" aria-label={`리뷰 ${n}개`}>{n}</span>}
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          );
   return (
     <section>
       <BackBar />
@@ -174,25 +198,10 @@ export function PostDetail({ id }: { id: string }) {
       </div>}
 
       <div className="d-grid">
-        <div className="code">
-          {shownFiles.length > 1 && (
-            <div className="file-tabs view" role="tablist" aria-label={`파일 ${shownFiles.length}개`}>
-              {shownFiles.map((f, i) => {
-                const ps = allProblems[i] ?? [];
-                const pe = ps.filter((p) => p.sev === 'e').length;
-                const n = readOnly ? 0 : lineThreads.filter((t) => (t.file ?? 0) === i).reduce((k, t) => k + t.comments.length, 0);
-                return (
-                  <span key={f.name} className={`ftab ${i === fi ? 'on' : ''}`}>
-                    <button type="button" role="tab" aria-selected={i === fi} className="ftab-name" onClick={() => setFileIdx(i)}>
-                      <LangIcon lang={f.lang} size={16} />{f.name}
-                      {pe > 0 ? <i className="ftab-dot e" aria-label={`오류 ${pe}`} /> : ps.length > 0 ? <i className="ftab-dot w" aria-label={`경고 ${ps.length}`} /> : null}
-                      {n > 0 && <span className="ftab-n" aria-label={`리뷰 ${n}개`}>{n}</span>}
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          )}
+        <div className={`code ${tree ? 'has-tree' : ''}`}>
+          {tree && <FileTree variant="side" className="only-wide" files={shownFiles} active={fi} onPick={setFileIdx} badge={reviewsOf} dot={dotOf} />}
+          <div className="code-main">
+          {tree ? <FileTree variant="drop" className="only-narrow" files={shownFiles} active={fi} onPick={setFileIdx} badge={reviewsOf} dot={dotOf} /> : tabs}
           <div className="code-h">
             <span className="file"><LangIcon lang={curFile.lang} size={20} />{curFile.name}</span><span className="muted small">{langLabel(curFile.lang)}{shownFiles.length > 1 ? ` · ${fi + 1}/${shownFiles.length}` : ''}</span>
             {e > 0 && <span className="pill e">오류 {e}</span>}
@@ -218,6 +227,7 @@ export function PostDetail({ id }: { id: string }) {
             <div className="no-review">{share ? '줄 의견 없음' : isAuthor || !problems[0] ? '줄 리뷰 없음'
               : <>줄 리뷰 없음 · 검사 결과: <a href={`#L${problems[0].line}`} onClick={(ev) => { ev.preventDefault(); document.getElementById(`L${problems[0].line}`)?.scrollIntoView({ block: 'center' }); }}>{problems[0].line}번째 줄</a></>}</div>
           )}
+          </div>
         </div>
 
         {/* 글 전체 댓글은 버전과 상관없이 늘 같은 글에 붙어 있어요 */}
