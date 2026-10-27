@@ -1,10 +1,11 @@
+import { allMembers, ui5Meta } from './ui5meta';
 /**
  * 마우스를 올리면 보여 줄 설명 (VS Code hover처럼).
  * sig는 코드 모양으로 보여 줄 한 줄, text는 설명, link는 공식 문서예요.
  */
 export interface Doc { sig?: string; text: string; link?: string; title?: string }
 
-const UI5_API = (name: string) => `https://ui5.sap.com/1.120.2/#/api/${name}`;
+const UI5_API = (name: string) => `https://ui5.sap.com/#/api/${name}`;
 const MDN_CSS = (p: string) => `https://developer.mozilla.org/ko/docs/Web/CSS/${p}`;
 const MDN_HTML = (t: string) => `https://developer.mozilla.org/ko/docs/Web/HTML/Element/${t}`;
 
@@ -425,6 +426,25 @@ const JSON_KEYS: Record<string, Doc> = {
 
 /* ───────── 찾기 ───────── */
 
+/** 설명을 따로 써 두지 않은 UI5 컨트롤은 컨트롤 정보(ui5meta)로 짧게 알려 줘요. */
+function ui5ClassDoc(name: string): Doc | null {
+  const meta = ui5Meta();
+  if (!meta) return null;
+  const local = name.slice(name.lastIndexOf(':') + 1);
+  const cls = meta.classes.get(name) ?? (/^[A-Z]/.test(local) ? [...meta.classes.values()].find((c) => c.name.endsWith(`.${local}`) && c.name.startsWith('sap.m.')) ?? [...meta.classes.values()].find((c) => c.name.endsWith(`.${local}`)) : undefined);
+  if (!cls) return null;
+  const mem = allMembers(meta, cls.name);
+  // 이름 뒤에 조사를 붙이지 않게 '항목: 값' 꼴로 써요.
+  const parts = ['UI5 컨트롤이에요.'];
+  if (cls.parent) parts.push(`부모: ${cls.parent.split('.').pop()}`);
+  if (mem.defaultAgg) parts.push(`안에 넣는 자리: ${mem.defaultAgg}`);
+  const own = cls.props.slice(0, 6).map((p) => p.name);
+  if (own.length) parts.push(`주요 속성: ${own.join(', ')}`);
+  if (cls.events.length) parts.push(`이벤트: ${cls.events.slice(0, 5).join(', ')}`);
+  return { title: cls.name, text: parts.join(' · '), link: UI5_API(cls.name) };
+}
+
+
 export type HoverCtx = 'tag' | 'attr' | 'prop' | null;
 
 /** 줄에서 col 자리에 있는 낱말. 없으면 null. */
@@ -475,7 +495,7 @@ export function lookup(hit: { word: string; chain: string; ctx: HoverCtx }, lang
       if (ctx === 'tag') {
         const full = XML_TAG_ALIAS[word] ?? (word.includes(':') ? null : `sap.m.${word}`);
         if (full && UI5_CLASSES[full]) return UI5_CLASSES[full];
-        return titled(word, XML_ATTR[word]); // <content> 같은 집합
+        return titled(word, XML_ATTR[word]) ?? ui5ClassDoc(word); // <content> 같은 집합, 그 밖의 컨트롤
       }
       return null;
     }
@@ -489,6 +509,7 @@ export function lookup(hit: { word: string; chain: string; ctx: HoverCtx }, lang
     default: {
       if (UI5_CLASSES[chain]) return UI5_CLASSES[chain];
       if (JS[chain]) return titled(chain, JS[chain]);
+      if (/^sap\.[\w.]*\.[A-Z]\w*$/.test(chain) && ui5ClassDoc(chain)) return ui5ClassDoc(chain);
       const two = chain.split('.').slice(-2).join('.');
       if (JS[two]) return titled(two, JS[two]);
       // sap.m 까지만 친 네임스페이스

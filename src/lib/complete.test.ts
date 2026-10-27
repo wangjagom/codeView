@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { caseFor, expand, newline, openTags, shouldPair, suggest } from './complete';
 import { TEMPLATES, fillTemplate } from './templates';
+import { loadUi5Meta } from './ui5meta';
 
 const at = (s: string) => ({ text: s.replace('|', ''), pos: s.indexOf('|') });
 const labels = (s: string, lang: string, force = false) => {
@@ -98,5 +99,38 @@ describe('templates', () => {
     expect(labels('new sap.m.Bu|', 'JavaScript')[0]).toBe('Button');
     expect(labels('sap.m.MessageToast.|', 'JavaScript')).toEqual(['show']);
     expect(labels('sap.ui.getCore().|', 'JavaScript')).toContain('attachInit');
+  });
+});
+
+describe('UI5 컨트롤 정보 (최신 OpenUI5에서 뽑은 목록)', () => {
+  beforeAll(async () => { await loadUi5Meta(); });
+  const V = '<mvc:View xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.ui.layout.form">\n';
+  it('XML: 모든 컨트롤 태그 (ComboBox 등)', () => {
+    expect(labels(`${V}<ComboB|`, 'XML')).toContain('ComboBox');
+    expect(labels(`${V}<MultiI|`, 'XML')).toContain('MultiInput');
+    expect(labels(`${V}<Simple|`, 'XML')).toContain('f:SimpleForm');
+    expect(labels(`${V}<ShellB|`, 'XML')).toContain('sapf:ShellBar');
+  });
+  it('XML: 상속받은 속성·이벤트까지', () => {
+    const l = labels(`${V}<ComboBox |`, 'XML', true);
+    for (const a of ['selectedKey', 'value', 'placeholder', 'enabled', 'visible', 'items', 'change', 'selectionChange', 'id', 'class']) expect(l, a).toContain(a);
+  });
+  it('XML: 집합 태그와 그 안에 들어갈 컨트롤', () => {
+    expect(labels(`${V}<ComboBox>\n  <it|`, 'XML')).toContain('items');
+    expect(labels(`${V}<ComboBox>\n  <items>\n    <core:|`, 'XML')).toContain('core:Item');
+    expect(labels(`${V}<f:SimpleForm>\n  <f:con|`, 'XML')).toContain('f:content');
+  });
+  it('XML: enum 값과 true/false', () => {
+    expect(labels(`${V}<Button type="|`, 'XML', true)).toContain('Emphasized');
+    expect(labels(`${V}<Button type="Em|`, 'XML')).toEqual(['Emphasized']);
+    expect(labels(`${V}<Button enabled="|`, 'XML', true)).toEqual(['true', 'false']);
+    expect(labels('<mvc:View xmlns:f="|', 'XML', true)).toContain('sap.ui.layout.form');
+  });
+  it('JS: 모듈 경로, 네임스페이스, 메서드', () => {
+    expect(labels('sap.ui.define([\n  "sap/m/ComboB|', 'JavaScript')).toContain('sap/m/ComboBox');
+    expect(labels('sap.ui.define([\n  "JSONM|', 'JavaScript')).toContain('sap/ui/model/json/JSONModel');
+    expect(labels('sap.m.Com|', 'JavaScript')).toContain('ComboBox');
+    expect(labels('oCombo.getSelectedK|', 'JavaScript')).toContain('getSelectedKey');
+    expect(labels('const a = "con|', 'JavaScript')).toEqual([]);
   });
 });

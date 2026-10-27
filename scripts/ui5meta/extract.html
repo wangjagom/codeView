@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8">
+<script id="sap-ui-bootstrap" src="resources/sap-ui-core.js" data-sap-ui-async="true" data-sap-ui-compat-version="edge" data-sap-ui-theme="sap_horizon"></script>
+<script>
+window.RESULT = null;
+const LIBS = ['sap.ui.core', 'sap.m', 'sap.f', 'sap.ui.layout', 'sap.ui.unified', 'sap.ui.table', 'sap.uxap', 'sap.tnt'];
+sap.ui.require(['sap/ui/core/Lib', 'sap/ui/base/DataType'], async function (Lib, DataType) {
+  try {
+    const libs = await Promise.all(LIBS.map((name) => Lib.load({ name })));
+    const names = new Set();
+    const info = sap.ui.getCore().getLoadedLibraries ? sap.ui.getCore().getLoadedLibraries() : {};
+    for (const n of LIBS) { const l = info[n] || Lib.all()[n]; for (const c of [...(l.controls || []), ...(l.elements || [])]) names.add(c); }
+    const classes = {}, enums = {}, methods = new Set(), fails = [];
+    const own = (o) => Object.values(o || {}).filter((x) => !x.deprecated && x.visibility !== 'hidden');
+    const addEnum = (t) => {
+      if (!t || enums[t] || /^(string|boolean|int|float|any|object|function|sap\.ui\.core\.(CSSSize|CSSColor|URI|ID|Percentage|CSSSizeShortHand))(\[\])?$/.test(t)) return;
+      try { const dt = DataType.getType(t); const v = dt && dt.getEnumValues && dt.getEnumValues(); if (v) enums[t] = Object.keys(v).map((k) => v[k]); } catch (e) {}
+    };
+    for (const n of [...names].sort()) {
+      try {
+        const C = await new Promise((res, rej) => sap.ui.require([n.replace(/\./g, '/')], res, rej));
+        const m = C.getMetadata();
+        if (m.isDeprecated && m.isDeprecated()) continue;
+        const props = own(m.getProperties()).map((p) => { addEnum(p.type); return [p.name, p.type]; });
+        const aggs = own(m.getAggregations()).map((a) => [a.name, a.type, a.multiple ? 1 : 0]);
+        const events = own(m.getEvents()).map((e) => e.name);
+        const assocs = own(m.getAssociations()).map((a) => a.name);
+        const parent = m.getParent() ? m.getParent().getName() : '';
+        classes[n] = { p: parent, a: m.isAbstract() ? 1 : 0, d: m.getDefaultAggregationName ? (m.getDefaultAggregationName() || '') : '', props, aggs, events, assocs };
+        for (const k of Object.getOwnPropertyNames(C.prototype)) if (!k.startsWith('_') && typeof C.prototype[k] === 'function' && k !== 'constructor') methods.add(k);
+      } catch (e) { fails.push(n + ': ' + (e.message || e)); }
+    }
+    // parents outside the list (Control, Element, ManagedObject...)
+    const ensure = async (n) => {
+      if (!n || classes[n]) return;
+      try {
+        const C = await new Promise((res, rej) => sap.ui.require([n.replace(/\./g, '/')], res, rej));
+        const m = C.getMetadata();
+        classes[n] = { p: m.getParent() ? m.getParent().getName() : '', a: 1, d: '', props: own(m.getProperties()).map((p) => [p.name, p.type]), aggs: own(m.getAggregations()).map((a) => [a.name, a.type, a.multiple ? 1 : 0]), events: own(m.getEvents()).map((e) => e.name), assocs: own(m.getAssociations()).map((a) => a.name), base: 1 };
+        for (const k of Object.getOwnPropertyNames(C.prototype)) if (!k.startsWith('_') && typeof C.prototype[k] === 'function' && k !== 'constructor') methods.add(k);
+        await ensure(classes[n].p);
+      } catch (e) { fails.push(n + ': ' + e.message); }
+    };
+    for (const n of Object.keys(classes)) await ensure(classes[n].p);
+    window.RESULT = { version: sap.ui.version, classes, enums, methods: [...methods].sort(), fails };
+  } catch (e) { window.RESULT = { error: String(e && e.stack || e) }; }
+});
+</script>

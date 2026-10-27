@@ -1,5 +1,6 @@
 import { keywordsFor } from './highlight';
 import { fillTemplate, templatesFor } from './templates';
+import { allMembers, isA, loadUi5Meta, ui5Meta, usableClasses, type Ui5Meta } from './ui5meta';
 
 /** 자동완성 항목 종류. 목록 왼쪽 아이콘과 정렬 순서에 써요. */
 export type Kind = 'tpl' | 'snip' | 'kw' | 'tag' | 'attr' | 'prop' | 'val' | 'fn' | 'cls' | 'mod' | 'word';
@@ -179,6 +180,141 @@ const UI5_NS: Record<string, Item[]> = {
   'sap.f': nsItems('', 'DynamicPage DynamicPageTitle DynamicPageHeader FlexibleColumnLayout Card ShellBar Avatar GridList'),
 };
 
+
+/* ───────── UI5 컨트롤 정보로 만드는 자동완성 (ui5meta.json) ───────── */
+/** 라이브러리 → 흔히 쓰는 접두어 (xmlns를 아직 안 적었을 때 보여 줄 이름) */
+const UI5_PREFIX: Record<string, string> = {
+  'sap.m': 'm', 'sap.ui.core': 'core', 'sap.ui.core.mvc': 'mvc', 'sap.f': 'f', 'sap.ui.layout': 'l', 'sap.ui.layout.form': 'form',
+  'sap.ui.unified': 'u', 'sap.ui.table': 'table', 'sap.uxap': 'uxap', 'sap.tnt': 'tnt',
+};
+const UI5_LIBS = Object.keys(UI5_PREFIX);
+
+/** 문서에 적힌 xmlns (접두어 → 네임스페이스). 기본 네임스페이스가 없으면 sap.m으로 봐요. */
+export function xmlNamespaces(text: string): Map<string, string> {
+  const ns = new Map<string, string>();
+  for (const m of text.matchAll(/\bxmlns(?::([\w.-]+))?\s*=\s*"([^"]*)"/g)) ns.set(m[1] ?? '', m[2]);
+  if (!ns.has('')) ns.set('', 'sap.m');
+  return ns;
+}
+const tagClass = (tag: string, ns: Map<string, string>) => {
+  const i = tag.indexOf(':');
+  const pkg = ns.get(i < 0 ? '' : tag.slice(0, i));
+  return pkg ? `${pkg}.${tag.slice(i + 1)}` : null;
+};
+const tagPrefix = (tag: string) => (tag.includes(':') ? tag.slice(0, tag.indexOf(':') + 1) : '');
+/** 클래스 이름 → 이 문서에서 쓸 태그 이름 (xmlns가 없으면 흔한 접두어로 보여 주고 알려 줘요) */
+function classTag(cls: string, ns: Map<string, string>): { tag: string; missing: string | null } {
+  const i = cls.lastIndexOf('.');
+  const pkg = cls.slice(0, i), local = cls.slice(i + 1);
+  for (const [p, n] of ns) if (n === pkg) return { tag: p ? `${p}:${local}` : local, missing: null };
+  let p = UI5_PREFIX[pkg] ?? pkg.split('.').pop()!;
+  if (ns.has(p)) p = pkg.replace(/\./g, ''); // 이미 다른 라이브러리가 쓰는 접두어면 겹치지 않게
+  return { tag: `${p}:${local}`, missing: `xmlns:${p}="${pkg}"` };
+}
+const shortType = (t: string) => t.replace(/^sap\.ui\.core\./, 'core.').replace(/^sap\.m\./, '');
+
+function controlTags(meta: Ui5Meta, ns: Map<string, string>, type?: string): Item[] {
+  const own = new Set(ns.values());
+  return usableClasses(meta)
+    .filter((c) => !type || !meta.classes.has(type) || isA(meta, c.name, type))
+    .map((c) => {
+      const { tag, missing } = classTag(c.name, ns);
+      const box = !!allMembers(meta, c.name).defaultAgg;
+      const insert = box ? `${tag}$1>\n  $0\n</${tag}>` : `${tag}$1 />`;
+      return { label: tag, insert, kind: 'tag' as const, detail: missing ? `${missing} 필요` : c.name, far: !own.has(c.name.slice(0, c.name.lastIndexOf('.'))) };
+    })
+    // 문서에 적힌 네임스페이스 컨트롤을 먼저 보여 줘요.
+    .sort((a, b) => Number(a.far) - Number(b.far))
+    .map(({ far: _far, ...it }) => it);
+}
+
+/** < 를 친 자리에서 보여 줄 태그: 안쪽 컨트롤의 집합(aggregation)과 들어갈 수 있는 컨트롤 */
+function xmlTagItems(meta: Ui5Meta, text: string, open: string[]): Item[] {
+  const ns = xmlNamespaces(text);
+  const inner = open[0];
+  if (inner) {
+    const local = inner.slice(inner.indexOf(':') + 1);
+    if (/^[a-z]/.test(local) && open[1]) {
+      // <items> 같은 집합 안: 그 집합 타입에 맞는 컨트롤만
+      const parent = tagClass(open[1], ns);
+      const agg = parent && meta.classes.has(parent) ? allMembers(meta, parent).aggs.find((a) => a.name === local) : undefined;
+      return controlTags(meta, ns, agg?.type);
+    }
+    const cls = tagClass(inner, ns);
+    if (cls && meta.classes.has(cls)) {
+      const mem = allMembers(meta, cls);
+      const pre = tagPrefix(inner);
+      const aggs = mem.aggs.map((a) => ({ label: `${pre}${a.name}`, insert: `${pre}${a.name}>\n  $0\n</${pre}${a.name}>`, kind: 'tag' as const, detail: `집합 · ${shortType(a.type)}${a.multiple ? ' 여러 개' : ''}` }));
+      const def = mem.aggs.find((a) => a.name === mem.defaultAgg);
+      return [...aggs, ...(def ? controlTags(meta, ns, def.type) : [])];
+    }
+  }
+  return controlTags(meta, ns);
+}
+
+/** 태그 안에서 보여 줄 속성·이벤트 */
+function xmlAttrItems(meta: Ui5Meta, text: string, tagText: string): Item[] | null {
+  const tag = /^<([\w:.-]+)/.exec(tagText)?.[1];
+  const cls = tag && tagClass(tag, xmlNamespaces(text));
+  if (!cls || !meta.classes.has(cls)) return null;
+  const used = new Set([...tagText.matchAll(/\s([\w:.-]+)\s*=/g)].map((m) => m[1]));
+  const mem = allMembers(meta, cls);
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+  const items: Item[] = [
+    { label: 'id', insert: 'id="${1}"', kind: 'attr', detail: 'ID' },
+    ...(isA(meta, cls, 'sap.ui.core.Control') ? [{ label: 'class', insert: 'class="${1:sapUiSmallMargin}"', kind: 'attr' as const, detail: 'CSS 클래스' }] : []),
+    ...mem.props.map((p) => ({ label: p.name, insert: p.type === 'boolean' ? `${p.name}="\${1:true}"` : `${p.name}="\${1}"`, kind: 'attr' as const, detail: shortType(p.type) })),
+    ...mem.events.map((e) => ({ label: e.name, insert: `${e.name}=".\${1:on${cap(e.name)}}"`, kind: 'fn' as const, detail: '이벤트' })),
+    ...mem.aggs.filter((a) => a.multiple || /Item|Column|Content/.test(a.type)).map((a) => ({ label: a.name, insert: `${a.name}="\${1:{/${a.name}}}"`, kind: 'attr' as const, detail: `집합 바인딩 · ${shortType(a.type)}` })),
+    ...mem.assocs.map((a) => ({ label: a.name, insert: `${a.name}="\${1}"`, kind: 'attr' as const, detail: '연결 (id)' })),
+  ];
+  if (/View$|FragmentDefinition$/.test(cls) || /View$|FragmentDefinition$/.test(tag)) items.push(...UI5_ATTRS.filter((a) => a.label.startsWith('xmlns') || a.label === 'controllerName'));
+  return items.filter((it) => !used.has(it.label));
+}
+
+/** 속성 값 안: enum이면 고를 값, boolean이면 true/false, xmlns면 라이브러리 */
+function xmlValueItems(meta: Ui5Meta, text: string, tagText: string, attr: string): Item[] {
+  if (attr === 'xmlns' || attr.startsWith('xmlns:')) return plain('mod', UI5_LIBS, '라이브러리');
+  const tag = /^<([\w:.-]+)/.exec(tagText)?.[1];
+  const cls = tag && tagClass(tag, xmlNamespaces(text));
+  if (!cls || !meta.classes.has(cls)) return [];
+  const p = allMembers(meta, cls).props.find((x) => x.name === attr);
+  if (!p) return [];
+  if (p.type === 'boolean') return plain('val', ['true', 'false']);
+  return plain('val', meta.enums.get(p.type) ?? [], shortType(p.type));
+}
+
+/** JS: "sap/m/Com 같은 모듈 경로. 슬래시 없이 치면 마지막 이름으로도 찾아요. */
+function moduleItems(meta: Ui5Meta, prefix: string): Item[] {
+  const p = prefix.toLowerCase();
+  const hit = meta.modules.filter((m) => {
+    const l = m.toLowerCase();
+    if (p.includes('/')) return l.startsWith(p) || !!fuzzy(l, p);
+    const b = l.slice(l.lastIndexOf('/') + 1);
+    return b.startsWith(p) || l.startsWith(p);
+  });
+  return hit
+    .sort((a, b) => a.length - b.length || a.localeCompare(b))
+    .slice(0, 100)
+    .map((m) => ({ label: m, insert: m, kind: (/\/[A-Z][^/]*$/.test(m) ? 'cls' : 'mod') as Kind, detail: '모듈' }));
+}
+
+/** JS: sap.m. 다음에 올 것 (하위 네임스페이스·클래스) */
+function nsChildren(meta: Ui5Meta | null, chain: string): Item[] {
+  const manual = UI5_NS[chain] ?? [];
+  if (!meta) return manual;
+  const path = `${chain.replace(/\./g, '/')}/`;
+  const mods = new Set<string>(), cls = new Set<string>();
+  for (const m of meta.modules) {
+    if (!m.startsWith(path)) continue;
+    const rest = m.slice(path.length);
+    const seg = rest.split('/')[0];
+    if (rest.includes('/')) mods.add(seg);
+    else if (/^[A-Z]/.test(seg)) cls.add(seg);
+  }
+  return [...manual, ...plain('mod', [...mods], '네임스페이스'), ...plain('cls', [...cls])];
+}
+
 /* ───────── UI5 XML / HTML ───────── */
 type Tag = [name: string, body: string];
 const tags = (list: Tag[], detail?: string): Item[] => list.map(([label, insert]) => ({ label, insert, kind: 'tag', detail }));
@@ -284,7 +420,10 @@ function rank(items: Item[], prefix: string): Item[] {
       const l = it.label.toLowerCase();
       if (p && l === p && it.kind !== 'snip' && it.kind !== 'tag' && it.kind !== 'tpl') return null; // 이미 다 친 낱말은 보여 줄 필요가 없어요
       if (l.startsWith(p)) return { it, s: 0 };
-      return fuzzy(l, p) ? { it, s: 1 } : null;
+      // f:SimpleForm 같은 태그는 : 뒤 이름으로도 찾아요.
+      const local = it.kind === 'tag' && !p.includes(':') && l.includes(':') ? l.slice(l.indexOf(':') + 1) : '';
+      if (local && local.startsWith(p)) return { it, s: 1 };
+      return fuzzy(l, p) || (local && fuzzy(local, p)) ? { it, s: 2 } : null;
     })
     .filter((x): x is { it: Item; s: number } => x !== null)
     .sort((a, b) => a.s - b.s || KIND_ORDER[a.it.kind] - KIND_ORDER[b.it.kind] || a.it.label.length - b.it.label.length || a.it.label.localeCompare(b.it.label))
@@ -341,6 +480,33 @@ export function suggest(text: string, pos: number, lang: string, force = false, 
   const before = text.slice(0, pos);
   const line = before.slice(before.lastIndexOf('\n') + 1);
   if (/[\w$-]/.test(text[pos] ?? '') && !force) return null; // 낱말 가운데에서는 띄우지 않아요
+  const isJs = lang === 'JavaScript' || lang === 'TypeScript';
+  // UI5 컨트롤 정보는 처음 쓸 때 불러와요. 다 불러오기 전에는 기본 목록만 보여 줘요.
+  const meta = ui5Meta();
+  if (!meta && (lang === 'XML' || isJs)) void loadUi5Meta();
+  if (isJs && meta) {
+    // sap.ui.define([ "sap/m/… 처럼 모듈 경로를 쓰는 중
+    const sm = /(["'])([\w/.$-]*)$/.exec(line);
+    if (sm && (line.slice(0, sm.index).split(sm[1]).length - 1) % 2 === 0) {
+      const deps = Math.max(before.lastIndexOf('sap.ui.define('), before.lastIndexOf('sap.ui.require(')) > before.lastIndexOf(']');
+      if (sm[2].startsWith('sap/') || (deps && (sm[2] || force))) {
+        const items = moduleItems(meta, sm[2]);
+        return items.length ? { from: pos - sm[2].length, prefix: sm[2], items } : null;
+      }
+    }
+  }
+  if (lang === 'XML' && meta) {
+    // 속성 값 안 (enum·true/false·xmlns)
+    const lt = before.lastIndexOf('<'), gt = before.lastIndexOf('>');
+    if (lt > gt) {
+      const tagText = before.slice(lt);
+      const v = /\s([\w:.-]+)\s*=\s*"([^"{]*)$/.exec(tagText);
+      if (v && (tagText.match(/"/g) ?? []).length % 2 === 1) {
+        const items = rank(xmlValueItems(meta, text, tagText, v[1]), v[2]);
+        return items.length ? { from: pos - v[2].length, prefix: v[2], items } : null;
+      }
+    }
+  }
   if (inCommentOrString(line, lang)) return null;
   // 파일 맨 앞이면 프로젝트를 만들 때 생기는 기본 코드도 같이 보여 줘요.
   const atStart = !text.slice(0, pos - (/<?!?[\w$@:-]*$/.exec(line)?.[0].length ?? 0)).trim() && !text.slice(pos).trim();
@@ -366,7 +532,8 @@ export function suggest(text: string, pos: number, lang: string, force = false, 
     }
     m = /<(!?[\w:.-]*)$/.exec(line);
     if (m) {
-      const r = rank([...tpls(true), ...(ui5 ? UI5_TAGS : HTML_TAGS)], m[1]);
+      const gen = ui5 && meta ? xmlTagItems(meta, text, openTags(before.slice(0, pos - m[0].length))) : [];
+      const r = rank([...tpls(true), ...(ui5 ? UI5_TAGS : HTML_TAGS), ...gen], m[1]);
       return r.length ? { from: pos - m[1].length, prefix: m[1], items: r } : null;
     }
     if (atStart) { const w = /[\w.]*$/.exec(line)![0]; return out(w, []); }
@@ -375,7 +542,7 @@ export function suggest(text: string, pos: number, lang: string, force = false, 
       const tagText = before.slice(lt);
       if ((tagText.match(/"/g) ?? []).length % 2 === 1) return null; // 속성 값 안
       m = /\s([\w:.-]*)$/.exec(tagText);
-      if (m) return out(m[1], ui5 ? UI5_ATTRS : HTML_ATTRS);
+      if (m) return out(m[1], ui5 ? (meta && xmlAttrItems(meta, text, tagText)) || UI5_ATTRS : HTML_ATTRS);
     }
     return null;
   }
@@ -419,12 +586,12 @@ export function suggest(text: string, pos: number, lang: string, force = false, 
 
   // JavaScript (UI5) 그리고 예전 글의 비슷한 언어들
   const chain = /(?:^|[^\w$.])((?:[A-Za-z_$][\w$]*\.)+)([\w$]*)$/.exec(line);
-  const ns = chain && UI5_NS[chain[1].slice(0, -1)];
-  if (chain && ns) return out(chain[2], ns, true);
+  const ns = chain && /^sap\b/.test(chain[1]) ? nsChildren(meta, chain[1].slice(0, -1)) : null;
+  if (chain && ns?.length) return out(chain[2], ns, true);
   const dot = /([\w$)\]])\.([\w$]*)$/.exec(line);
   if (dot) {
     const used = docWords(text, /(?<=\.)[A-Za-z_$][\w$]*/g, dot[2], new Set()).map((it) => ({ ...it, kind: 'fn' as const, detail: undefined }));
-    return out(dot[2], [...JS_MEMBERS, ...used], true);
+    return out(dot[2], [...JS_MEMBERS, ...used, ...(meta ? plain('fn', meta.methods, 'UI5') : [])], true);
   }
   const m = /[A-Za-z_$][\w$]*$/.exec(line)?.[0] ?? '';
   return out(m, [...JS_SNIPS, ...plain('mod', ['sap'], 'UI5 네임스페이스'), ...plain('kw', kws), ...docWords(text, /[A-Za-z_$][\w$]*/g, m, kwSet)]);
