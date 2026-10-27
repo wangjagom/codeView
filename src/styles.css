@@ -153,6 +153,11 @@ code { font-family: var(--mono); font-size: .88em; background: var(--fill); bord
 .set-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .set-grp { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
 .set-grp .set-row { margin-top: 0; flex: 1; min-width: 0; row-gap: 6px; }
+.ftab.add.set.on { background: var(--accent-soft); border-style: solid; border-color: transparent; }
+.set-ask { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--fill); display: grid; gap: 8px; }
+.set-ask p { margin: 0; font-size: 14px; }
+.set-ask-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.danger-soft { background: var(--red-soft); color: var(--red); }
 .set-g { flex: none; width: 40px; padding-top: 7px; font: 700 11.5px var(--font); color: var(--muted); letter-spacing: .02em; }
 .sub-form { display: grid; gap: 10px; }
 .reply > .expand.full { flex-basis: 100%; }

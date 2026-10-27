@@ -588,10 +588,8 @@ function (Controller, JSONModel) {
   "sap.app": {
     "id": "%NS%",
     "type": "application",
-    "i18n": "i18n/i18n.properties",
     "applicationVersion": { "version": "0.0.1" },
-    "title": "{{appTitle}}",
-    "description": "{{appDescription}}",
+    "title": "상품 둘러보기",
     "dataSources": {
       "mainData": { "uri": "model/data.json", "type": "JSON" }
     }
@@ -607,10 +605,6 @@ function (Controller, JSONModel) {
     },
     "contentDensities": { "compact": true, "cozy": true },
     "models": {
-      "i18n": {
-        "type": "sap.ui.model.resource.ResourceModel",
-        "settings": { "bundleName": "%NS%.i18n.i18n" }
-      },
       "": {
         "type": "sap.ui.model.json.JSONModel",
         "dataSource": "mainData"
@@ -646,27 +640,6 @@ function (Controller, JSONModel) {
 `,
   },
   {
-    id: 'set-nav-component', lang: 'JavaScript', label: 'Component.js', from: 'UI5 세트', file: 'Component.js', name: 'Component', set: true,
-    body: `sap.ui.define([
-    "sap/ui/core/UIComponent"
-],
-function (UIComponent) {
-    "use strict";
-
-    return UIComponent.extend("%NS%.Component", {
-        metadata: {
-            manifest: "json"
-        },
-
-        init: function () {
-            UIComponent.prototype.init.apply(this, arguments);
-            this.getRouter().initialize();
-        }
-    });
-});
-`,
-  },
-  {
     id: 'set-nav-app-view', lang: 'XML', label: 'App.view.xml', from: 'UI5 세트', file: 'App.view.xml', name: 'App', set: true,
     body: `<mvc:View
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
@@ -680,7 +653,7 @@ function (UIComponent) {
     body: `<mvc:View controllerName="%NS%.controller.List"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m">
-    <Page id="listPage" title="{i18n>listTitle}">
+    <Page id="listPage" title="상품 목록">
         <content>
             <List items="{/products}">
                 <ObjectListItem title="{name}" number="{price}" numberUnit="KRW"
@@ -720,7 +693,7 @@ function (Controller) {
     body: `<mvc:View controllerName="%NS%.controller.Detail"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m">
-    <Page id="detailPage" title="{i18n>detailTitle}" showNavButton="true" navButtonPress=".onNavBack">
+    <Page id="detailPage" title="상품 상세" showNavButton="true" navButtonPress=".onNavBack">
         <content>
             <ObjectHeader title="{name}" number="{price}" numberUnit="KRW">
                 <attributes>
@@ -762,14 +735,6 @@ function (Controller, History) {
         }
     });
 });
-`,
-  },
-  {
-    id: 'set-nav-i18n', lang: 'Properties', label: 'i18n.properties', from: 'UI5 세트', file: 'i18n.properties', name: 'i18n', set: true,
-    body: `appTitle=상품 둘러보기
-appDescription=목록에서 고르면 상세 화면으로 가요
-listTitle=상품 목록
-detailTitle=상품 상세
 `,
   },
 
@@ -974,8 +939,8 @@ export const TEMPLATE_SETS: TemplateSet[] = [
   { id: 'ui5-vc', group: 'UI5', label: 'View + Controller', detail: '화면 하나와 동작 · 입력해서 목록에 추가', ids: ['set-vc-view', 'set-vc-controller'] },
   { id: 'ui5-data', group: 'UI5', label: 'View + Controller + 데이터', detail: 'data.json을 Table에 바인딩 · 검색 필터', ids: ['set-data-view', 'set-data-controller', 'set-data-json'] },
   { id: 'ui5-fragment', group: 'UI5', label: 'View + Fragment', detail: '버튼을 누르면 Dialog Fragment를 열어요', ids: ['set-frag-view', 'set-frag-controller', 'set-frag-fragment'] },
-  { id: 'ui5-nav', group: 'UI5', label: '목록 → 상세 (라우팅)', detail: 'manifest 라우팅 · List·Detail View 9개 파일', ids: ['set-nav-manifest', 'set-nav-component', 'set-nav-app-view', 'set-nav-list-view', 'set-nav-list-controller', 'set-nav-detail-view', 'set-nav-detail-controller', 'set-data-json', 'set-nav-i18n'] },
-  { id: 'ui5-app', group: 'UI5', label: 'UI5 기본 앱 (BAS)', detail: 'BAS 생성기가 만드는 파일 10개', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-i18n', 'ui5-css'] },
+  { id: 'ui5-nav', group: 'UI5', label: '목록 → 상세 (라우팅)', detail: 'manifest 라우팅 · List·Detail 화면 두 개', ids: ['set-nav-manifest', 'set-nav-app-view', 'set-nav-list-view', 'set-nav-list-controller', 'set-nav-detail-view', 'set-nav-detail-controller', 'set-data-json'] },
+  { id: 'ui5-app', group: 'UI5', label: 'BAS 전체 구조', detail: 'BAS 생성기가 만드는 앱 파일 전부 (manifest·Component·i18n 등)', ids: ['ui5-manifest', 'ui5-component', 'ui5-index', 'ui5-app-view', 'ui5-app-controller', 'ui5-view', 'ui5-controller', 'ui5-models', 'ui5-i18n', 'ui5-css'] },
   { id: 'rap', group: 'ABAP', label: 'RAP 기본 (CDS)', detail: 'Root·Projection·Metadata·Service', ids: ['cds-root-view-entity', 'cds-projection', 'cds-metadata-ext', 'cds-service'] },
 ];
 

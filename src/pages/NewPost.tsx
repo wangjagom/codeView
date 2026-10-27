@@ -106,15 +106,24 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
   }, [confirmRemove]);
-  const applySet = (setId: string) => {
+  // 파일 세트: 지금 파일을 세트로 바꾸거나(replace), 코드가 있는 파일은 두고 옆에 더해요(add).
+  const [setsOpen, setSetsOpen] = useState(false);
+  const [pickSet, setPickSet] = useState<string | null>(null);
+  const applySet = (setId: string, mode: 'replace' | 'add') => {
     const set = templateSetFiles(setId);
-    // 비어 있는 파일은 세트로 바꾸고, 코드가 있는 파일은 그대로 앞에 둬요.
+    const label = TEMPLATE_SETS.find((s) => s.id === setId)?.label;
+    setSetsOpen(false); setPickSet(null);
+    if (mode === 'replace') {
+      setAllFiles(set.slice(0, MAX_FILES).map((f) => newFile(f.lang, { ...f, langAuto: false })));
+      toast(`${label} 파일 ${Math.min(set.length, MAX_FILES)}개로 시작해요`);
+      return;
+    }
     const kept = files.filter((f) => f.code.trim());
     const room = MAX_FILES - kept.length;
     const taken = new Set(kept.map((f) => f.name.trim().toLowerCase()));
     const added = set.filter((f) => !taken.has(f.name.toLowerCase())).slice(0, room).map((f) => newFile(f.lang, { ...f, langAuto: false }));
     setAllFiles([...kept, ...added], kept.length);
-    toast(`${TEMPLATE_SETS.find((s) => s.id === setId)?.label} 파일 ${added.length}개를 넣었어요`);
+    toast(added.length ? `${label} 파일 ${added.length}개를 더했어요` : '더할 자리가 없어요 · 파일은 10개까지예요');
   };
 
   const pickTask = (t: string) => { setTask(t); persist({ task: t }); setNewTask(null); };
@@ -243,17 +252,35 @@ export function NewPost({ edit }: { edit?: EditTarget } = {}) {
               );
             })}
             {files.length < MAX_FILES && <button type="button" className="ftab add" onClick={addFile}>+ 파일</button>}
+            {!edit && !allEmpty && <button type="button" className={`ftab add set ${setsOpen ? 'on' : ''}`} aria-expanded={setsOpen} onClick={() => { setSetsOpen(!setsOpen); setPickSet(null); }}>세트</button>}
           </div>
-          {allEmpty && (
+          <Expand open={allEmpty || setsOpen}>
             <div className="sets">
-              <p className="muted small">파일 세트로 시작하기 · 필요한 파일을 한 번에 넣어요</p>
+              <p className="muted small">{allEmpty ? '파일 세트로 시작하기 · 필요한 파일을 한 번에 넣어요' : '파일 세트 · 필요한 파일을 한 번에 넣어요'}</p>
               {(['UI5', 'ABAP'] as const).map((g) => (
                 <div key={g} className="set-grp"><span className="set-g">{g}</span>
-                  <span className="set-row">{TEMPLATE_SETS.filter((s) => s.group === g).map((s) => <button key={s.id} type="button" className="chip sm" title={`${s.detail} · 파일 ${s.ids.length}개`} onClick={() => applySet(s.id)}>{s.label}</button>)}</span>
+                  <span className="set-row">{TEMPLATE_SETS.filter((s) => s.group === g).map((s) => (
+                    <button key={s.id} type="button" className={`chip sm ${pickSet === s.id ? 'on' : ''}`} aria-pressed={pickSet === s.id} title={`${s.detail} · 파일 ${s.ids.length}개`}
+                      onClick={() => (allEmpty ? applySet(s.id, 'replace') : setPickSet(pickSet === s.id ? null : s.id))}>{s.label}</button>
+                  ))}</span>
                 </div>
               ))}
+              {pickSet && !allEmpty && (() => {
+                const s = TEMPLATE_SETS.find((x) => x.id === pickSet)!;
+                const room = MAX_FILES - files.filter((f) => f.code.trim()).length;
+                return (
+                  <div className="set-ask">
+                    <p><b>{s.label}</b> <span className="muted">· {s.detail}</span></p>
+                    <div className="set-ask-btns">
+                      <button type="button" className="btn sm danger-soft" onClick={() => applySet(s.id, 'replace')}>지금 파일 바꾸기</button>
+                      <button type="button" className="btn sm soft" disabled={room <= 0} onClick={() => applySet(s.id, 'add')}>옆에 추가</button>
+                    </div>
+                    <p className="muted small">{room > 0 ? `바꾸면 지금 파일 ${files.length}개는 지워져요 · 추가하면 지금 파일은 두고 이름이 겹치지 않는 파일만 더해요` : '파일이 10개라 더할 자리가 없어요 · 바꾸기만 할 수 있어요'}</p>
+                  </div>
+                );
+              })()}
             </div>
-          )}
+          </Expand>
         </div>
 
         <div className="two">

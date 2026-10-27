@@ -58,7 +58,7 @@ describe('UI5 파일 세트', () => {
     for (const k of ['zproject1/view/App.view.xml', 'zproject1/view/List.view.xml', 'zproject1/view/Detail.view.xml', 'zproject1/controller/List.controller.js', 'zproject1/controller/Detail.controller.js']) expect(b.modules[k], k).toBeTruthy();
     expect(JSON.parse(b.modules['zproject1/manifest.json'])['sap.ui5'].models['']).toBeUndefined();
     expect(b.models.map((m) => m.name)).toEqual(['']);
-    expect(b.modules['zproject1/i18n/i18n.properties']).toContain('listTitle=');
+    expect(b.modules['zproject1/Component.js']).toContain('zproject1.Component');
     expect(b.notes).toEqual([]);
   });
   it('세트 파일은 10개를 넘지 않아요', () => {
